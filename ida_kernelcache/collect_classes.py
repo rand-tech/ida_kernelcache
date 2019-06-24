@@ -96,6 +96,8 @@ def _emulate_arm64(start, end, on_BL=None, on_RET=None):
             reg[insn.Op1.reg] = reg[insn.Op2.reg] + insn.Op3.value
         elif mnem == 'NOP':
             pass
+        elif mnem == 'PAC':
+            pass
         elif mnem == 'MOV' and insn.Op2.type == idc.o_imm:
             reg[insn.Op1.reg] = insn.Op2.value
         elif mnem == 'MOV' and insn.Op2.type == idc.o_reg:
