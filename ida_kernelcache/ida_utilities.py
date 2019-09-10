@@ -246,8 +246,12 @@ def _instructions_by_range(start, end):
         if insn is None:
             break
         next_pc = pc + insn.size
+        """
+        Sometimes IDA coalesces instruction and the lenght would take us over the end.
+        One cannot know in advance in this is the case. Hence, disabling the check ...
         if next_pc > end:
             raise AlignmentError(end)
+        """
         yield insn
         pc = next_pc
 
