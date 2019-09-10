@@ -327,7 +327,7 @@ def _collect_vtables(metaclass_info):
 
 def _check_filetype(filetype):
     """Checks that the filetype is compatible before trying to process it."""
-    return 'Mach-O' in filetype and 'ARM64' in filetype
+    return ('Mach-O' in filetype or 'kernelcache' in filetype) and 'ARM64' in filetype
 
 def collect_class_info_internal():
     """Collect information about C++ classes defined in a kernelcache.
