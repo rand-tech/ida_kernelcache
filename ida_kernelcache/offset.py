@@ -29,7 +29,7 @@ def initialize_data_offsets():
     for seg in idautils.Segments():
         name = idc.SegName(seg)
         if not (name.endswith('__DATA_CONST.__const') or name.endswith('__got')
-                or name.endswith('__DATA.__data')):
+                or name.endswith('__DATA.__data') or name.endswith('__DATA_CONST.__auth_ptr')):
             continue
         for word, ea in idau.ReadWords(seg, idc.SegEnd(seg), addresses=True):
             if idau.is_mapped(word, value=False):
