@@ -17,7 +17,7 @@ import segment
 import symbol
 import vtable
 
-_log = idau.make_log(1, __name__)
+_log = idau.make_log(12, __name__)
 
 # IDK where IDA defines these.
 _MEMOP_PREINDEX  = 0x20
@@ -90,7 +90,7 @@ def _emulate_arm64(start, end, on_BL=None, on_RET=None):
     for insn in idau.Instructions(start, end):
         _log(11, 'Processing instruction {:#x}', insn.ea)
         mnem = insn.get_canon_mnem()
-        if mnem == 'ADRP' or mnem == 'ADR':
+        if mnem == 'ADRP' or mnem == 'ADR' or mnem == 'ADRL':
             reg[insn.Op1.reg] = insn.Op2.value
         elif mnem == 'ADD' and insn.Op2.type == idc.o_reg and insn.Op3.type == idc.o_imm:
             reg[insn.Op1.reg] = reg[insn.Op2.reg] + insn.Op3.value
