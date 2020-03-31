@@ -17,7 +17,13 @@ _log = idau.make_log(0, __name__)
 
 def find_kernel_base():
     """Find the kernel base."""
-    return idaapi.get_fileregion_ea(0)
+    base = idaapi.get_fileregion_ea(0)
+    if base != 0xffffffffffffffff:
+        return base
+    seg = idaapi.get_segm_by_name('__TEXT.HEADER')
+    if seg is None:
+        raise RuntimeError("unable to find kernel base")
+    return seg.start_ea
 
 base = find_kernel_base()
 """The kernel base address (the address of the main kernel Mach-O header)."""
