@@ -51,10 +51,21 @@ def _find_prelink_info_segments():
 def parse_prelink_info():
     """Find and parse the kernel __PRELINK_INFO dictionary."""
     segments = _find_prelink_info_segments()
+
     for segment in segments:
-        prelink_info_string = idc.get_strlit_contents(segment)
+        seg_start = idc.get_segm_start(segment)
+        seg_end = idc.get_segm_end(segment)
+
+        #prelink_info_string = idc.get_strlit_contents(segment)
+        prelink_info_string = idc.get_bytes(seg_start, seg_end-seg_start)
+
+        if prelink_info_string[:5] != b"<dict":
+            continue
+
         if prelink_info_string != None:
+            prelink_info_string = prelink_info_string.replace(b"\x00", b"")
             prelink_info_string = prelink_info_string.decode()
+
         prelink_info = kplist.kplist_parse(prelink_info_string)
         if prelink_info:
             return prelink_info
