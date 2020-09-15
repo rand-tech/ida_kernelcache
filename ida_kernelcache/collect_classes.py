@@ -165,21 +165,21 @@ class _OneToOneMapFactory(object):
 
 def _process_mod_init_func_for_metaclasses(func, found_metaclass):
     """Process a function from the __mod_init_func section for OSMetaClass information."""
-    _log(4, 'Processing function {}', idc.GetFunctionName(func))
+    _log(4, 'Processing function {}', idc.get_func_name(func))
     def on_BL(addr, reg):
         X0, X1, X3 = reg['X0'], reg['X1'], reg['X3']
         if not (X0 and X1 and X3):
             return
         _log(5, 'Have call to {:#x}({:#x}, {:#x}, ?, {:#x})', addr, X0, X1, X3)
         # OSMetaClass::OSMetaClass(this, className, superclass, classSize)
-        if not idc.SegName(X1).endswith("__TEXT.__cstring") or not idc.SegName(X0):
+        if not idc.get_segm_name(X1).endswith("__TEXT.__cstring") or not idc.get_segm_name(X0):
             return
-        found_metaclass(X0, idc.GetString(X1), X3, reg['X2'] or None)
-    _emulate_arm64(func, idc.FindFuncEnd(func), on_BL=on_BL)
+        found_metaclass(X0, idc.get_strlit_contents(X1), X3, reg['X2'] or None)
+    _emulate_arm64(func, idc.find_func_end(func), on_BL=on_BL)
 
 def _process_mod_init_func_section_for_metaclasses(segstart, found_metaclass):
     """Process a __mod_init_func section for OSMetaClass information."""
-    segend = idc.SegEnd(segstart)
+    segend = idc.get_segm_end(segstart)
     for func in idau.ReadWords(segstart, segend):
         _process_mod_init_func_for_metaclasses(func, found_metaclass)
 
@@ -199,7 +199,7 @@ def _collect_metaclasses():
         metaclass_to_class_size[metaclass]      = class_size
         metaclass_to_meta_superclass[metaclass] = meta_superclass
     for ea in idautils.Segments():
-        segname = idc.SegName(ea)
+        segname = idc.get_segm_name(ea)
         if not _should_process_segment(ea, segname):
             continue
         _log(2, 'Processing segment {}', segname)
@@ -240,7 +240,7 @@ def _get_vtable_metaclass(vtable_addr, metaclass_info):
 
 def _process_const_section_for_vtables(segstart, metaclass_info, found_vtable):
     """Process a __const section to search for virtual method tables."""
-    segend = idc.SegEnd(segstart)
+    segend = idc.get_segm_end(segstart)
     addr = segstart
     while addr < segend:
         possible, length = vtable.vtable_length(addr, segend, scan=True)
@@ -280,7 +280,7 @@ def _collect_vtables(metaclass_info):
             metaclass_to_vtable_builder.add_link(metaclass, vtable)
     # Process all the segments with found_vtable().
     for ea in idautils.Segments():
-        segname = idc.SegName(ea)
+        segname = idc.get_segm_name(ea)
         if not segname.endswith('__DATA_CONST.__const'):
             continue
         _log(2, 'Processing segment {}', segname)

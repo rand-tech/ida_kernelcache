@@ -113,16 +113,16 @@ def _process_possible_stub(stub, make_thunk, next_stub):
         _log(1, 'Could not convert stub to function at {:#x}', stub)
         return False
     # Next, set the appropriate flags on the stub. Make the stub a thunk if that was requested.
-    flags = idc.GetFunctionFlags(stub)
+    flags = idc.get_func_attr(stub)
     if flags == -1:
         _log(1, 'Could not get function flags for stub at {:#x}', stub)
         return False
-    target_flags = idc.GetFunctionFlags(target)
+    target_flags = idc.get_func_attr(target)
     if target_flags != -1 and target_flags & idc.FUNC_NORET:
         flags |= idc.FUNC_NORET
     if make_thunk:
         flags |= idc.FUNC_THUNK
-    if idc.SetFunctionFlags(stub, flags | idc.FUNC_THUNK) == 0:
+    if idc.set_func_attr(stub, flags | idc.FUNC_THUNK) == 0:
         _log(1, 'Could not set function flags for stub at {:#x}', stub)
         return False
     # Next, ensure that IDA sees the target as a function, but continue anyway if that fails.
@@ -135,11 +135,11 @@ def _process_possible_stub(stub, make_thunk, next_stub):
 
 def _process_stubs_section(segstart, make_thunk, next_stub):
     """Process all the functions in a __stubs section."""
-    segend = idc.SegEnd(segstart)
+    segend = idc.get_segm_end(segstart)
     # We'll go through each address and check if it has a reference. If it does, it is likely a
     # stub. As long as the address doesn't already have a stub name, process it.
     for ea in idau.Addresses(segstart, segend, step=1):
-        if idc.isRef(idc.GetFlags(ea)) and not stub_name_target(idau.get_ea_name(ea)):
+        if idc.isRef(idaapi.get_full_flags(ea)) and not stub_name_target(idau.get_ea_name(ea)):
             _process_possible_stub(ea, make_thunk, next_stub)
 
 def initialize_stub_symbols(make_thunk=True):
@@ -155,7 +155,7 @@ def initialize_stub_symbols(make_thunk=True):
     """
     next_stub = internal.make_name_generator(kernelcache_stub_suffix)
     for ea in idautils.Segments():
-        segname = idc.SegName(ea)
+        segname = idc.get_segm_name(ea)
         if not segname.endswith('__stubs'):
             continue
         _log(3, 'Processing segment {}', segname)

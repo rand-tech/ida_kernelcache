@@ -21,7 +21,7 @@ def method_name(symbol):
     If the symbol demangles to 'Class::method(args)', this function returns 'method'.
     """
     try:
-        demangled  = idc.Demangle(symbol, idc.GetLongPrm(idc.INF_SHORT_DN))
+        demangled  = idc.demangle_name(symbol, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
         func       = demangled.split('::', 1)[1]
         base       = func.split('(', 1)[0]
         return base or None
@@ -34,7 +34,7 @@ def method_arguments_string(symbol):
     If the symbol demangles to 'Class::method(arg1, arg2)', this function returns 'arg1, arg2'.
     """
     try:
-        demangled  = idc.Demangle(symbol, idc.GetLongPrm(idc.INF_LONG_DN))
+        demangled  = idc.demangle_name(symbol, idc.get_inf_attr(idc.INF_LONG_DEMNAMES))
         func       = demangled.split('::', 1)[1]
         args       = func.split('(', 1)[1]
         args       = args.rsplit(')', 1)[0].strip()
@@ -160,7 +160,7 @@ def vtable_symbol_for_class(classname):
 def vtable_symbol_get_class(symbol):
     """Get the class name for a vtable symbol."""
     try:
-        demangled = idc.Demangle(symbol, idc.GetLongPrm(idc.INF_SHORT_DN))
+        demangled = idc.demangle_name(symbol, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
         pre, post = demangled.split("`vtable for'", 1)
         assert pre == ''
         return post

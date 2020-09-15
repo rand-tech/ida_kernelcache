@@ -48,7 +48,7 @@ def tagged_pointer_next(ea, tp, end=None):
     # We don't have a link. Do a forward scan until we find the next tagged pointer.
     _log(3, 'Scanning for next tagged pointer')
     if end is None:
-        end = idc.SegEnd(ea)
+        end = idc.get_segm_end(ea)
     for value, value_ea in idau.ReadWords(ea, end, step=4, addresses=True):
         if is_tagged_pointer(value):
             return value_ea
@@ -58,7 +58,7 @@ def tagged_pointer_next(ea, tp, end=None):
 def untag_pointer(ea, tp):
     _log(4, 'Untagging pointer at {:x}', ea)
     idau.patch_word(ea, tagged_pointer_untag(tp))
-    idc.OpOff(ea, 0, 0)
+    idc.op_plain_offset(ea, 0, 0)
 
 def untag_pointers_in_range(start, end):
     assert kernel.kernelcache_format == kernel.KC_12_MERGED, 'Wrong kernelcache format'
@@ -76,6 +76,6 @@ def untag_pointers_in_range(start, end):
 def untag_pointers():
     _log(2, 'Starting tagged pointer conversion')
     for seg in idautils.Segments():
-        untag_pointers_in_range(idc.SegStart(seg), idc.SegEnd(seg))
+        untag_pointers_in_range(idc.get_segm_start(seg), idc.get_segm_end(seg))
     _log(2, 'Tagged pointer conversion complete')
 

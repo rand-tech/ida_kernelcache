@@ -43,7 +43,7 @@ def kernelcache_process(untag_pointers=True):
     import idaapi
     import idc
     def autoanalyze():
-        idc.Wait()
+        idaapi.auto_wait()
     autoanalyze()
     if (kernel.kernelcache_format == kernel.KC_12_MERGED
             and untag_pointers

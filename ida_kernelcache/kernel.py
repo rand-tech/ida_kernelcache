@@ -38,21 +38,21 @@ def _find_prelink_info_segments():
     segments = []
     # Gather a list of all the possible segments.
     for seg in idautils.Segments():
-        name = idc.SegName(seg)
+        name = idc.get_segm_name(seg)
         if '__PRELINK_INFO' in name or name == '__info':
             segments.append(seg)
     if len(segments) < 1:
         _log(0, 'Could not find any __PRELINK_INFO segment candidates')
     elif len(segments) > 1:
         _log(1, 'Multiple segment names contain __PRELINK_INFO: {}',
-                [idc.SegName(seg) for seg in segments])
+                [idc.get_segm_name(seg) for seg in segments])
     return segments
 
 def parse_prelink_info():
     """Find and parse the kernel __PRELINK_INFO dictionary."""
     segments = _find_prelink_info_segments()
     for segment in segments:
-        prelink_info_string = idc.GetString(segment)
+        prelink_info_string = idc.get_strlit_contents(segment)
         prelink_info = kplist.kplist_parse(prelink_info_string)
         if prelink_info:
             return prelink_info

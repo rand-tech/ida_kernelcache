@@ -60,7 +60,7 @@ There are advantages and disadvantages to each representation. The unions repres
 more flexible if the automated analysis messes up, but so far I have not found a good way to set
 the operands of instructions referring to these structures.
 
-TODO: I know it's probably possible with ida_bytes.op_stroff().
+TODO: I know it's probably possible with idaapi.op_stroff().
 
 We divide the processing into two parts: vtable generation and class generation.
 
@@ -227,7 +227,7 @@ def _create_class_structs__slices(classinfo, endmarkers=True):
     if sid is None or sidf is None:
         _log(0, 'Could not create class structs for {}', classname)
         return None
-    assert all(not idc.IsUnion(s) for s in (sidf, sid))
+    assert all(not idc.is_union(s) for s in (sidf, sid))
     # Calculate the size of the ::fields struct.
     if classinfo.superclass:
         # If we have a superclass, our fields start after our superclass's fields end.
@@ -238,7 +238,7 @@ def _create_class_structs__slices(classinfo, endmarkers=True):
     fields_size = classinfo.class_size - fields_start
     # Add an ::end member to the fields struct if requested.
     if endmarkers:
-        ret = idc.AddStrucMember(sidf, classname + '::end', fields_size, idc.FF_UNK, -1, 0)
+        ret = idc.add_struc_member(sidf, classname + '::end', fields_size, idc.FF_UNK, -1, 0)
         if ret not in (0, idc.STRUC_ERROR_MEMBER_NAME, idc.STRUC_ERROR_MEMBER_OFFSET):
             # If that didn't work that's too bad, but continue anyway.
             _log(0, 'Could not create {}::end', classname)
@@ -270,12 +270,12 @@ def _populate_wrapper_struct__slices(sid, classinfo):
             _log(0, 'Could not find {}::fields', ci.classname)
             return False
         # If this is a 0-length struct (no fields), skip it.
-        size = idc.GetStrucSize(fields_sid)
+        size = idaapi.get_struc_size(fields_sid)
         if size == 0:
             continue
         # If this is already in the wrapper struct, skip it. This avoids weird
         # STRUC_ERROR_MEMBER_VARLAST errors.
-        if idc.GetMemberOffset(sid, ci.classname) != -1:
+        if idc.get_member_offset(sid, ci.classname) != -1:
             continue
         # Add the ::fields struct to the wrapper.
         ret = idau.struct_add_struct(sid, ci.classname, offset, fields_sid)
@@ -462,7 +462,7 @@ def _set_class_style(style):
         idau.struct_create('OSObject', union=want_union)
     else:
         # A style already exists. Check that the requested style matches.
-        is_union = bool(idc.IsUnion(sid))
+        is_union = bool(idc.is_union(sid))
         if is_union != want_union:
             raise ValueError('Incompatible style {}', style)
     # Set the appropriate functions based on the style.
@@ -513,7 +513,7 @@ def _propagate_virtual_method_type_for_method(classinfo, class_vindex, vmethod):
     if not idau.is_function_start(vmethod):
         _log(2, 'Not a function start: {:x}', vmethod)
         return False
-    vmethod_type = idc.GuessType(vmethod)
+    vmethod_type = idc.guess_type(vmethod)
     if not vmethod_type:
         _log(2, 'No guessed type: {:x}', vmethod)
         return False
@@ -523,7 +523,7 @@ def _propagate_virtual_method_type_for_method(classinfo, class_vindex, vmethod):
         return False
     vmethods_sid = idau.struct_open(classinfo.classname + '::vmethods')
     vmethod_offset = class_vindex * idau.WORD_SIZE
-    vmethod_mid = idc.GetMemberId(vmethods_sid, vmethod_offset)
+    vmethod_mid = idc.get_member_id(vmethods_sid, vmethod_offset)
     if not bool(idc.SetType(vmethod_mid, vmethod_ptr_type)):
         _log(2, 'Could not set vmethod field type: {:x}, {}, {}', vmethod, classinfo.classname,
                 class_vindex)

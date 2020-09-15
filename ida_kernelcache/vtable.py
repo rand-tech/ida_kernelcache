@@ -64,7 +64,7 @@ def vtable_length(ea, end=None, scan=False):
         return length if possible else 0
     # Initialize default values.
     if end is None:
-        end = idc.SegEnd(ea)
+        end = idc.get_segm_end(ea)
     words = idau.ReadWords(ea, end)
     # Iterate through the first VTABLE_OFFSET words. If any of them are nonzero, then we can skip
     # past all the words we just saw.
@@ -120,7 +120,7 @@ def convert_vtable_to_offsets(vtable, length=None):
         return False
     successful = True
     for address in idau.Addresses(vtable, length=length, step=idau.WORD_SIZE):
-        if not idc.OpOff(address, 0, 0):
+        if not idc.op_plain_offset(address, 0, 0):
             _log(0, 'Could not change address {:#x} into an offset', address)
             successful = False
     return successful
@@ -335,7 +335,7 @@ def class_from_vtable_method_symbol(method_symbol):
 
     Extract the name of the base class from a canonical method symbol.
     """
-    demangled = idc.Demangle(method_symbol, idc.GetLongPrm(idc.INF_SHORT_DN))
+    demangled = idc.demangle_name(method_symbol, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
     if not demangled:
         return None
     classname = demangled.split('::', 1)[0]

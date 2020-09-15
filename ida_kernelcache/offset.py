@@ -27,13 +27,13 @@ def initialize_data_offsets():
     # not actually an address. However, since kernel addresses are numerically much larger, the
     # chance of this happening is much less.
     for seg in idautils.Segments():
-        name = idc.SegName(seg)
+        name = idc.get_segm_name(seg)
         if not (name.endswith('__DATA_CONST.__const') or name.endswith('__got')
                 or name.endswith('__DATA.__data') or name.endswith('__DATA_CONST.__auth_ptr')):
             continue
-        for word, ea in idau.ReadWords(seg, idc.SegEnd(seg), addresses=True):
+        for word, ea in idau.ReadWords(seg, idc.get_segm_end(seg), addresses=True):
             if idau.is_mapped(word, value=False):
-                idc.OpOff(ea, 0, 0)
+                idc.op_plain_offset(ea, 0, 0)
 
 kernelcache_offset_suffix = '___offset_'
 """The suffix that gets appended to a symbol to create the offset name, without the offset ID."""
@@ -54,7 +54,7 @@ def offset_name_target(offset_name):
 def _process_offset(offset, ea, next_offset):
     """Process an offset in a __got section."""
     # Convert the address containing the offset into an offset in IDA, but continue if it fails.
-    if not idc.OpOff(ea, 0, 0):
+    if not idc.op_plain_offset(ea, 0, 0):
         _log(1, 'Could not convert {:#x} into an offset', ea)
     # Get the name to which the offset refers.
     name = idau.get_ea_name(offset, user=True)
@@ -79,7 +79,7 @@ def _process_offset(offset, ea, next_offset):
 
 def _process_offsets_section(segstart, next_offset):
     """Process all the offsets in a __got section."""
-    for offset, ea in idau.ReadWords(segstart, idc.SegEnd(segstart), addresses=True):
+    for offset, ea in idau.ReadWords(segstart, idc.get_segm_end(segstart), addresses=True):
         if not offset_name_target(idau.get_ea_name(ea)):
             # This is not a previously named offset.
             if idau.is_mapped(offset, value=False):
@@ -97,7 +97,7 @@ def initialize_offset_symbols():
     """
     next_offset = internal.make_name_generator(kernelcache_offset_suffix)
     for ea in idautils.Segments():
-        segname = idc.SegName(ea)
+        segname = idc.get_segm_name(ea)
         if not segname.endswith('__got'):
             continue
         _log(2, 'Processing segment {}', segname)
