@@ -10,8 +10,8 @@ import idc
 import idautils
 import idaapi
 
-import ida_utilities as idau
-import kplist
+from . import ida_utilities as idau
+from . import kplist
 
 _log = idau.make_log(0, __name__)
 
@@ -53,6 +53,8 @@ def parse_prelink_info():
     segments = _find_prelink_info_segments()
     for segment in segments:
         prelink_info_string = idc.get_strlit_contents(segment)
+        if prelink_info_string != None:
+            prelink_info_string = prelink_info_string.decode()
         prelink_info = kplist.kplist_parse(prelink_info_string)
         if prelink_info:
             return prelink_info

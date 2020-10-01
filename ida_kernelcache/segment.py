@@ -8,8 +8,8 @@
 
 import idc
 
-import ida_utilities as idau
-import kernel
+from . import ida_utilities as idau
+from . import kernel
 
 _log = idau.make_log(0, __name__)
 

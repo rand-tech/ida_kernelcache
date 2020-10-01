@@ -8,6 +8,7 @@
 def kernelcache_find_virtual_method_overrides(classname=None, method=None):
     import idc
     import idaapi
+    import ida_name
     import ida_kernelcache as kc
 
     # Define the form to ask for the arguments.
@@ -34,30 +35,30 @@ Find virtual method overrides
         f.method.value    = method    or ''
         ok = f.Execute()
         if ok != 1:
-            print 'Cancelled'
+            print('Cancelled')
             return False
         classname = f.classname.value
         method    = f.method.value
         f.Free()
 
     if classname not in kc.class_info:
-        print 'Not a valid class: {}'.format(classname)
+        print('Not a valid class: {}'.format(classname))
         return False
 
-    print 'Subclasses of {} that override {}:'.format(classname, method)
+    print('Subclasses of {} that override {}:'.format(classname, method))
     baseinfo = kc.class_info[classname]
     found = False
     for classinfo in baseinfo.descendants():
         for _, override, _ in kc.vtable.class_vtable_overrides(classinfo, superinfo=baseinfo,
                 methods=True):
-            name = idc.NameEx(idc.BADADDR, override)
-            demangled = idc.Demangle(name, idc.GetLongPrm(idc.INF_SHORT_DN))
+            name = idc.get_name(override, ida_name.GN_VISIBLE | idc.calc_gtn_flags(idc.BADADDR, override))
+            demangled = idc.demangle_name(name, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
             name = demangled if demangled else name
             if method in name:
-                print '{:#x}  {}'.format(override, classinfo.classname)
+                print('{:#x}  {}'.format(override, classinfo.classname))
                 found = True
     if not found:
-        print 'No subclass of {} overrides {}'.format(classname, method)
+        print('No subclass of {} overrides {}'.format(classname, method))
     return found
 
 kernelcache_find_virtual_method_overrides()

@@ -11,11 +11,11 @@ import idc
 import idautils
 import idaapi
 
-import ida_utilities as idau
-import classes
-import segment
-import symbol
-import vtable
+from . import ida_utilities as idau
+from . import classes
+from . import segment
+from . import symbol
+from . import vtable
 
 _log = idau.make_log(12, __name__)
 
@@ -34,7 +34,7 @@ class _Regs(object):
             return _Regs.Unknown
         def __radd__(self, other):
             return _Regs.Unknown
-        def __nonzero__(self):
+        def __bool__(self):
             return False
 
     _reg_names = idautils.GetRegisterList()
@@ -53,7 +53,7 @@ class _Regs(object):
             pass
 
     def _reg(self, reg):
-        if isinstance(reg, (int, long)):
+        if isinstance(reg, int):
             reg = _Regs._reg_names[reg]
         return reg
 
@@ -115,7 +115,7 @@ def _emulate_arm64(start, end, on_BL=None, on_RET=None):
         elif (mnem == 'STR' or mnem == 'LDR') and not insn.auxpref & _MEMOP_WBINDEX:
             if mnem == 'LDR':
                 if insn.Op2.type == idc.o_displ:
-                    reg[insn.Op1.reg] = load(reg[insn.Op2.reg] + insn.Op2.addr, insn.Op1.dtyp)
+                    reg[insn.Op1.reg] = load(reg[insn.Op2.reg] + insn.Op2.addr, insn.Op1.dtype)
                 else:
                     reg.clear(insn.Op1.reg)
         elif mnem == 'BL' and insn.Op1.type == idc.o_near:
@@ -140,7 +140,7 @@ class _OneToOneMapFactory(object):
 
     def _make_unique_oneway(self, xs_to_ys, ys_to_xs, bad_x=None):
         """Internal helper to make one direction unique."""
-        for x, ys in xs_to_ys.items():
+        for x, ys in list(xs_to_ys.items()):
             if len(ys) != 1:
                 if bad_x:
                     bad_x(x, ys)
@@ -151,7 +151,7 @@ class _OneToOneMapFactory(object):
     def _build_oneway(self, xs_to_ys):
         """Build a one-way mapping after pruning."""
         x_to_y = dict()
-        for x, ys in xs_to_ys.items():
+        for x, ys in list(xs_to_ys.items()):
             x_to_y[x] = next(iter(ys))
         return x_to_y
 
@@ -174,7 +174,7 @@ def _process_mod_init_func_for_metaclasses(func, found_metaclass):
         # OSMetaClass::OSMetaClass(this, className, superclass, classSize)
         if not idc.get_segm_name(X1).endswith("__TEXT.__cstring") or not idc.get_segm_name(X0):
             return
-        found_metaclass(X0, idc.get_strlit_contents(X1), X3, reg['X2'] or None)
+        found_metaclass(X0, idc.get_strlit_contents(X1).decode(), X3, reg['X2'] or None)
     _emulate_arm64(func, idc.find_func_end(func), on_BL=on_BL)
 
 def _process_mod_init_func_section_for_metaclasses(segstart, found_metaclass):
@@ -217,7 +217,7 @@ def _collect_metaclasses():
     # Return the final dictionary of metaclass info.
     metaclass_to_classname = metaclass_to_classname_builder.build(bad_metaclass, bad_classname)
     metaclass_info = dict()
-    for metaclass, classname in metaclass_to_classname.items():
+    for metaclass, classname in list(metaclass_to_classname.items()):
         meta_superclass = metaclass_to_meta_superclass[metaclass]
         superclass_name = metaclass_to_classname.get(meta_superclass, None)
         metaclass_info[metaclass] = classes.ClassInfo(classname, metaclass, None, None,
@@ -301,7 +301,7 @@ def _collect_vtables(metaclass_info):
     metaclass_to_vtable = metaclass_to_vtable_builder.build(bad_metaclass, bad_vtable)
     # The resulting mapping may have fewer metaclasses than metaclass_info.
     class_info = dict()
-    for metaclass, classinfo in metaclass_info.items():
+    for metaclass, classinfo in list(metaclass_info.items()):
         # Add the vtable and its length, which we didn't have earlier. If the current class doesn't
         # have a vtable, take it from the superclass (recursing if necessary).
         metaclass_with_vtable = metaclass

@@ -21,7 +21,7 @@ import idc
 import idautils
 import idaapi
 
-import ida_utilities as idau
+from . import ida_utilities as idau
 
 _log = idau.make_log(2, __name__)
 
@@ -58,7 +58,7 @@ def _create_flow(function, bounds):
 def _add_blocks_to_queue(queue, flow, addresses):
     for ea in addresses:
         for bb in flow:
-            if bb.startEA <= ea < bb.endEA:
+            if bb.start_ea <= ea < bb.end_ea:
                 queue.append(bb)
                 break
         else:
@@ -82,7 +82,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
         return rv.value
 
     # Initialize our registers and create accessor functions.
-    regs = { reg: RegValue(DELTA, delta) for reg, delta in entry_regs.items() }
+    regs = { reg: RegValue(DELTA, delta) for reg, delta in list(entry_regs.items()) }
 
     # For each instruction in the basic block, see if any new register gets assigned.
     for insn in idau.Instructions(start, end):
@@ -91,12 +91,12 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
         # the caller to ensure that this initialization is correct.
         fixed_regs_and_deltas = fix.get(insn.ea)
         if fixed_regs_and_deltas:
-            for reg, delta in fixed_regs_and_deltas.items():
+            for reg, delta in list(fixed_regs_and_deltas.items()):
                 _log(6, '\t\t{:x}  fix {}={}', insn.ea, reg, delta)
                 regs[reg] = RegValue(DELTA, delta)
         # If this is an access instruction, record the access. See comment about auxpref below.
         if not (insn.auxpref & _ARM64_WRITEBACK):
-            for op in insn.Operands:
+            for op in insn.ops:
                 # We only consider o_displ and o_phrase.
                 if op.type == idaapi.o_void:
                     break
@@ -107,7 +107,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
                 if delta is None:
                     continue
                 # Get the instruction access size.
-                size = _INSN_OP_DTYP_SZ.get(op.dtyp)
+                size = _INSN_OP_DTYP_SZ.get(op.dtype)
                 if size is None:
                     continue
                 # Get the offset from the base register (which is additional to the base register's
@@ -130,8 +130,8 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
                 and insn.Op1.type == idaapi.o_reg
                 and insn.Op2.type == idaapi.o_reg
                 and insn.Op3.type == idaapi.o_void
-                and insn.Op1.dtyp == idaapi.dt_qword
-                and insn.Op2.dtyp == idaapi.dt_qword
+                and insn.Op1.dtype == idaapi.dt_qword
+                and insn.Op2.dtype == idaapi.dt_qword
                 and insn.Op2.reg in regs):
             # MOV Xdst, Xsrc
             _log(6, '\t\t{:x}  add {}={}', insn.ea, insn.Op1.reg, regs[insn.Op2.reg].value)
@@ -140,7 +140,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
                 and insn.Op1.type == idaapi.o_reg
                 and insn.Op2.type == idaapi.o_imm
                 and insn.Op3.type == idaapi.o_void
-                and insn.Op1.dtyp in (idaapi.dt_dword, idaapi.dt_qword)):
+                and insn.Op1.dtype in (idaapi.dt_dword, idaapi.dt_qword)):
             # MOV Xdst, #imm
             _log(7, '\t\t{:x}  const {}={}', insn.ea, insn.Op1.reg, insn.Op2.value)
             regs[insn.Op1.reg] = RegValue(CONST, insn.Op2.value)
@@ -149,8 +149,8 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
                 and insn.Op2.type == idaapi.o_reg
                 and insn.Op3.type == idaapi.o_imm
                 and insn.Op4.type == idaapi.o_void
-                and insn.Op1.dtyp == idaapi.dt_qword
-                and insn.Op2.dtyp == idaapi.dt_qword
+                and insn.Op1.dtype == idaapi.dt_qword
+                and insn.Op2.dtype == idaapi.dt_qword
                 and insn.Op2.reg in regs):
             # ADD Xdst, Xsrc, #amt
             op2 = regs[insn.Op2.reg]
@@ -161,7 +161,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
             # does not use the temporary registers after a call, but just to be safe, clear all the
             # temporary registers.
             _log(6, '\t\t{:x}  clear temps', insn.ea)
-            for r in xrange(0, 19):
+            for r in range(0, 19):
                 regs.pop(getattr(idautils.procregs, 'X{}'.format(r)).reg, None)
         else:
             # This is an unrecognized instruction. Clear all the registers it modifies.
@@ -174,14 +174,14 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
             # writeback behavior is only observed in o_displ operands, of which there should only
             # ever be one, so it doesn't matter that auxpref is stored on the instruction and not
             # the operand.
-            for op in insn.Operands:
+            for op in insn.ops:
                 if op.type == idaapi.o_void:
                     break
                 if ((feature & _INSN_OP_CHG[op.n] and op.type == idaapi.o_reg)
                         or (insn.auxpref & _ARM64_WRITEBACK and op.type == idaapi.o_displ)):
                     _log(6, '\t\t{:x}  clear {}', insn.ea, op.reg)
                     regs.pop(op.reg, None)
-    return { reg: rv.value for reg, rv in regs.items() if rv.type == DELTA }
+    return { reg: rv.value for reg, rv in list(regs.items()) if rv.type == DELTA }
 
 def _pointer_accesses_data_flow(flow, initialization, accesses):
     """Run the data flow for pointer_accesses."""
@@ -207,9 +207,9 @@ def _pointer_accesses_data_flow(flow, initialization, accesses):
     while queue:
         bb = queue.popleft()
         entry_regs = bb_regs[bb.id]
-        _log(3, 'Basic block {}  {:x}-{:x}', bb.id, bb.startEA, bb.endEA)
+        _log(3, 'Basic block {}  {:x}-{:x}', bb.id, bb.start_ea, bb.end_ea)
         _log(4, '\tregs@entry = {}', entry_regs)
-        exit_regs = _pointer_accesses_process_block(bb.startEA, bb.endEA, initialization,
+        exit_regs = _pointer_accesses_process_block(bb.start_ea, bb.end_ea, initialization,
                 entry_regs, accesses)
         _log(4, '\tregs@exit = {}', exit_regs)
         _log(4, '\tsuccs = {}', [s.id for s in bb.succs()])

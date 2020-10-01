@@ -10,10 +10,10 @@ from itertools import islice, takewhile
 import idc
 import idautils
 
-from symbol import vtable_symbol_for_class
-import ida_utilities as idau
-import classes
-import stub
+from .symbol import vtable_symbol_for_class
+from . import ida_utilities as idau
+from . import classes
+from . import stub
 
 _log = idau.make_log(0, __name__)
 
@@ -134,7 +134,7 @@ def _convert_vtable_methods_to_functions(vtable, length):
 def initialize_vtables():
     """Convert vtables into offsets and ensure that virtual methods are IDA functions."""
     classes.collect_class_info()
-    for vtable, length in classes.vtables.items():
+    for vtable, length in list(classes.vtables.items()):
         if not convert_vtable_to_offsets(vtable, length):
             _log(0, 'Could not convert vtable at address {:x} into offsets', vtable)
         _convert_vtable_methods_to_functions(vtable, length)
@@ -159,7 +159,7 @@ def add_vtable_symbol(vtable, classname):
 def initialize_vtable_symbols():
     """Populate IDA with virtual method table symbols for an iOS kernelcache."""
     classes.collect_class_info()
-    for classname, classinfo in classes.class_info.items():
+    for classname, classinfo in list(classes.class_info.items()):
         if classinfo.vtable:
             _log(3, 'Class {} has vtable at {:#x}', classname, classinfo.vtable)
             if not add_vtable_symbol(classinfo.vtable, classname):
@@ -208,7 +208,7 @@ def vtable_methods(vtable, start=VTABLE_OFFSET, length=None, nmethods=None):
     elif length is None:
         length = vtable_length(vtable)
     # Read the methods.
-    for i in xrange(start, length):
+    for i in range(start, length):
         yield idau.read_word(vtable + i * idau.WORD_SIZE)
 
 def class_vtable_methods(classinfo, nmethods=None, new=False):
@@ -271,7 +271,7 @@ def vtable_overrides(class_vtable, super_vtable, class_vlength=None, super_vleng
     else:
         nmethods = super_vlength
     # Iterate through the methods.
-    for i in xrange(nmethods):
+    for i in range(nmethods):
         # Read the old method.
         super_method = None
         if i < super_vlength:
@@ -409,6 +409,6 @@ def initialize_vtable_method_symbols():
     """
     processed = set()
     classes.collect_class_info()
-    for classinfo in classes.class_info.values():
+    for classinfo in list(classes.class_info.values()):
         _symbolicate_overrides_for_classinfo(classinfo, processed)
 

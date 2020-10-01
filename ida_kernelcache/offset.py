@@ -10,10 +10,10 @@ import re
 import idc
 import idautils
 
-import ida_utilities as idau
-import internal
-import kernel
-import stub
+from . import ida_utilities as idau
+from . import internal
+from . import kernel
+from . import stub
 
 _log = idau.make_log(1, __name__)
 

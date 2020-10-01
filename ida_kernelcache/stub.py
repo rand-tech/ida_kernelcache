@@ -11,8 +11,8 @@ import idc
 import idautils
 import idaapi
 
-import ida_utilities as idau
-import internal
+from . import ida_utilities as idau
+from . import internal
 
 _log = idau.make_log(1, __name__)
 
@@ -139,7 +139,7 @@ def _process_stubs_section(segstart, make_thunk, next_stub):
     # We'll go through each address and check if it has a reference. If it does, it is likely a
     # stub. As long as the address doesn't already have a stub name, process it.
     for ea in idau.Addresses(segstart, segend, step=1):
-        if idc.isRef(idaapi.get_full_flags(ea)) and not stub_name_target(idau.get_ea_name(ea)):
+        if idc.isRef(ida_bytes.get_full_flags(ea)) and not stub_name_target(idau.get_ea_name(ea)):
             _process_possible_stub(ea, make_thunk, next_stub)
 
 def initialize_stub_symbols(make_thunk=True):

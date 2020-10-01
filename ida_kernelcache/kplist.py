@@ -7,7 +7,7 @@
 #
 
 import base64
-from xml.etree.ElementTree import XMLTreeBuilder
+from xml.etree.ElementTree import TreeBuilder, XMLParser
 
 class _KPlistBuilder(object):
     """A companion class for XMLTreeBuilder to parse a kernel-style property list."""
@@ -51,7 +51,7 @@ class _KPlistBuilder(object):
         self.attributes       = {
                 'integer':    ('size',),
         }
-        self.tags = set(self.start_handler.keys()).union(self.end_handler.keys())
+        self.tags = set(self.start_handler.keys()).union(list(self.end_handler.keys()))
 
     # XMLTreeBuilder calls.
 
@@ -204,9 +204,10 @@ def kplist_parse(plist):
     """Parse a kernel-style property list."""
     try:
         builder = _KPlistBuilder()
-        parser  = XMLTreeBuilder(target=builder)
+        parser  = XMLParser(target=builder)
         parser.feed(plist)
         return parser.close()
-    except:
+    except Exception as e:
+        print(e)
         return None
 
