@@ -1,5 +1,10 @@
 # ida_kernelcache: An IDA Toolkit for analyzing iOS kernelcaches
 
+## Cellebrite Fork
+
+This fork was updated to work on IDA7.5/Python3/iOS 14.0.1
+
+## Original Readme
 <!-- Brandon Azad -->
 
 ida_kernelcache is an IDAPython module for IDA Pro to make working with iOS kernelcaches easier.
