@@ -9,6 +9,7 @@ from itertools import islice, takewhile
 
 import idc
 import idautils
+import idaapi
 
 from .symbol import vtable_symbol_for_class
 from . import ida_utilities as idau
@@ -120,6 +121,10 @@ def convert_vtable_to_offsets(vtable, length=None):
         return False
     successful = True
     for address in idau.Addresses(vtable, length=length, step=idau.WORD_SIZE):
+        # Handle addresses that are part of ALIGN directives
+        if idaapi.is_align_insn(address) != 0:
+            head = idaapi.get_item_head(address)
+            idaapi.del_items(head)
         if not idc.op_plain_offset(address, 0, 0):
             _log(0, 'Could not change address {:#x} into an offset', address)
             successful = False
@@ -150,7 +155,7 @@ def add_vtable_symbol(vtable, classname):
         True if the data was successfully converted into a vtable and the symbol was added.
     """
     vtable_symbol = vtable_symbol_for_class(classname)
-    if not idau.set_ea_name(vtable, vtable_symbol):
+    if not idau.set_ea_name(vtable, vtable_symbol, rename=True):
         _log(0, 'Address {:#x} already has name {} instead of vtable symbol {}'
                 .format(vtable, idau.get_ea_name(vtable), vtable_symbol))
         return False

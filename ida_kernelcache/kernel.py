@@ -20,10 +20,10 @@ def find_kernel_base():
     base = idaapi.get_fileregion_ea(0)
     if base != 0xffffffffffffffff:
         return base
-    seg = idaapi.get_segm_by_name('__TEXT.HEADER')
-    if seg is None:
+    seg = [seg for seg in map(idaapi.get_segm_by_name, ['__TEXT.HEADER', '__TEXT:HEADER']) if seg]
+    if not seg:
         raise RuntimeError("unable to find kernel base")
-    return seg.start_ea
+    return seg[0].start_ea
 
 base = find_kernel_base()
 """The kernel base address (the address of the main kernel Mach-O header)."""
