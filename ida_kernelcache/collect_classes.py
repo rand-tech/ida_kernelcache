@@ -36,6 +36,10 @@ class _Regs(object):
             return _Regs.Unknown
         def __bool__(self):
             return False
+        def __and__(self, other):
+            return _Regs.Unknown
+        def __or__(self, other):
+            return _Regs.Unknown
 
     _reg_names = idautils.GetRegisterList()
     Unknown = _Unknown()
@@ -102,6 +106,13 @@ def _emulate_arm64(start, end, on_BL=None, on_RET=None):
             reg[insn.Op1.reg] = insn.Op2.value
         elif mnem == 'MOV' and insn.Op2.type == idc.o_reg:
             reg[insn.Op1.reg] = reg[insn.Op2.reg]
+        elif mnem == 'MOVK' and insn.Op2.type == idc.o_imm:
+            shift = insn.Op2.specval
+            val = insn.Op2.value
+            change_mask = 0xffff << shift
+            keep_mask = ((1 << 64) - 1) ^ change_mask
+            reg[insn.Op1.reg] &= keep_mask
+            reg[insn.Op1.reg] |= ((val << shift) & change_mask)
         elif mnem == 'RET':
             if on_RET:
                 on_RET(reg)
