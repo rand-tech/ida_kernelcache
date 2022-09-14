@@ -16,8 +16,10 @@ from . import classes
 from . import segment
 from . import symbol
 from . import vtable
+from . import kernel
+import re
 
-_log = idau.make_log(12, __name__)
+_log = idau.make_log(2, __name__)
 
 # IDK where IDA defines these.
 _MEMOP_PREINDEX  = 0x20
@@ -183,7 +185,7 @@ def _process_mod_init_func_for_metaclasses(func, found_metaclass):
             return
         _log(5, 'Have call to {:#x}({:#x}, {:#x}, ?, {:#x})', addr, X0, X1, X3)
         # OSMetaClass::OSMetaClass(this, className, superclass, classSize)
-        if not idc.get_segm_name(X1).endswith("__TEXT.__cstring") or not idc.get_segm_name(X0):
+        if not (bool(re.match(".*__TEXT[.:]__cstring", idc.get_segm_name(X1)))) or not idc.get_segm_name(X0):
             return
         found_metaclass(X0, idc.get_strlit_contents(X1).decode(), X3, reg['X2'] or None)
     _emulate_arm64(func, idc.find_func_end(func), on_BL=on_BL)
@@ -196,8 +198,7 @@ def _process_mod_init_func_section_for_metaclasses(segstart, found_metaclass):
 
 def _should_process_segment(seg, segname):
     """Check if we should process the specified segment."""
-    return segname.endswith('__DATA_CONST.__mod_init_func') or \
-            segname == '__DATA.__kmod_init' or segname == '__DATA_CONST.__kmod_init'
+    return bool(re.match('.*__DATA(_CONST)?[.:]__mod_init_func', segname)) or bool(re.match('.*__DATA(_CONST)?[.:]__kmod_init', segname))
 
 def _collect_metaclasses():
     """Collect OSMetaClass information from all kexts in the kernelcache."""
@@ -236,7 +237,7 @@ def _collect_metaclasses():
     return metaclass_info
 
 _VTABLE_GETMETACLASS    = vtable.VTABLE_OFFSET + 7
-_MAX_GETMETACLASS_INSNS = 3
+_MAX_GETMETACLASS_INSNS = 7
 
 def _get_vtable_metaclass(vtable_addr, metaclass_info):
     """Simulate the getMetaClass method of the vtable and check if it returns an OSMetaClass."""
@@ -256,9 +257,10 @@ def _process_const_section_for_vtables(segstart, metaclass_info, found_vtable):
     while addr < segend:
         possible, length = vtable.vtable_length(addr, segend, scan=True)
         if possible:
+            _log(6, f"checking vtable at address: {addr:#x}")
             metaclass = _get_vtable_metaclass(addr, metaclass_info)
             if metaclass:
-                _log(4, 'Vtable at address {:#x} has metaclass {:#x}', addr, metaclass)
+                _log(4, 'Vtable at address {:#x} has metaclass {:#x} and length: {:#x}', addr, metaclass, length)
                 found_vtable(metaclass, addr, length)
         addr += length * idau.WORD_SIZE
 
@@ -286,13 +288,14 @@ def _collect_vtables(metaclass_info):
                 _log(2, 'Declining association between metaclass {:x} ({}) and vtable {:x} ({})',
                         metaclass, classname, vtable, vtable_classname)
                 return
-        # Add a link if they are in the same kext.
-        if segment.kernelcache_kext(metaclass) == segment.kernelcache_kext(vtable):
-            metaclass_to_vtable_builder.add_link(metaclass, vtable)
+        # Add a link if they are in the same kext and the kernelcache is not MERGED.
+        if kernel.kernelcache_format == kernel.KC_11_NORMAL and (segment.kernelcache_kext(metaclass) != segment.kernelcache_kext(vtable)):
+            return
+        metaclass_to_vtable_builder.add_link(metaclass, vtable)
     # Process all the segments with found_vtable().
     for ea in idautils.Segments():
         segname = idc.get_segm_name(ea)
-        if not segname.endswith('__DATA_CONST.__const'):
+        if not bool(re.match('.*__DATA(_CONST)?[.:]__const', segname)):
             continue
         _log(2, 'Processing segment {}', segname)
         _process_const_section_for_vtables(ea, metaclass_info, found_vtable)

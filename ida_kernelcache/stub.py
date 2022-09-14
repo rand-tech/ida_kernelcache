@@ -10,6 +10,7 @@ import re
 import idc
 import idautils
 import idaapi
+import ida_bytes
 
 from . import ida_utilities as idau
 from . import internal
@@ -113,16 +114,16 @@ def _process_possible_stub(stub, make_thunk, next_stub):
         _log(1, 'Could not convert stub to function at {:#x}', stub)
         return False
     # Next, set the appropriate flags on the stub. Make the stub a thunk if that was requested.
-    flags = idc.get_func_attr(stub)
+    flags = idc.get_func_attr(stub, idc.FUNCATTR_FLAGS)
     if flags == -1:
         _log(1, 'Could not get function flags for stub at {:#x}', stub)
         return False
-    target_flags = idc.get_func_attr(target)
+    target_flags = idc.get_func_attr(target, idc.FUNCATTR_FLAGS)
     if target_flags != -1 and target_flags & idc.FUNC_NORET:
         flags |= idc.FUNC_NORET
     if make_thunk:
         flags |= idc.FUNC_THUNK
-    if idc.set_func_attr(stub, flags | idc.FUNC_THUNK) == 0:
+    if idc.set_func_attr(stub, idc.FUNCATTR_FLAGS, flags | idc.FUNC_THUNK) == 0:
         _log(1, 'Could not set function flags for stub at {:#x}', stub)
         return False
     # Next, ensure that IDA sees the target as a function, but continue anyway if that fails.

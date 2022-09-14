@@ -130,7 +130,7 @@ from . import data_flow
 from . import symbol
 from . import vtable
 
-_log = idau.make_log(2, __name__)
+_log = idau.make_log(1, __name__)
 
 #### Vtable generation ############################################################################
 
@@ -224,6 +224,16 @@ def _create_class_structs__slices(classinfo, endmarkers=True):
     classname = classinfo.classname
     # Open or create the structs.
     sidf = idau.struct_open(classname + '::fields', create=True)
+    
+    # Now IDA creates structs that collide with the names that we want to use.
+    # For now, we'll try to rename what IDA created. Other alternatives are deleting it or removing the fields.
+    sid = idau.struct_open(classname)
+    if (sid):
+        _log(1, f'IDA has already created {classname} struct, renaming it.')
+        if (not ida_struct.set_struc_name(sid, f'ida_{classname}')):
+            _log(-1, 'failed to rename IDA struct')
+            # XXX: should we return in this case?
+
     sid  = idau.struct_open(classname, create=True)
     if sid is None or sidf is None:
         _log(0, 'Could not create class structs for {}', classname)

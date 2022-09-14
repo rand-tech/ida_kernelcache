@@ -79,7 +79,8 @@ KC_11_NORMAL = '11-normal'
 KC_12_MERGED = '12-merged'
 
 def _get_kernelcache_format():
-    if '_PrelinkLinkKASLROffsets' in prelink_info:
+    # once upon a time every KEXT had it's GOT ...
+    if any(idc.get_segm_name(seg).endswith("__got") for seg in idautils.Segments()):
         return KC_11_NORMAL
     return KC_12_MERGED
 

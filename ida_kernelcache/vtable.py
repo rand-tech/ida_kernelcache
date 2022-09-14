@@ -326,10 +326,14 @@ def class_vtable_overrides(classinfo, superinfo=None, new=False, methods=False):
     if superinfo:
         super_vtable = superinfo.vtable
         super_vlength = superinfo.vtable_length
+        if super_vlength is None:
+            super_vlength = 0  # TODO: theres a fix to apply where some classes vtable is not found because the vtable does not have the correct mangled name. Try on OSCOllection
+        if super_vtable is None:
+            super_vtable = 0  # TODO: theres a fix to apply where some classes vtable is not found because the vtable does not have the correct mangled name. Try on OSCOllection
         try:
             assert class_vlength >= super_vlength
         except AssertionError:
-            _log(0, 'Assertion info from {!r}', classinfo)
+            _log(0, 'Assertion info from {!r} with super {!r}', classinfo, superinfo)
             raise
     else:
         super_vtable = 0

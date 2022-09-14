@@ -28,7 +28,7 @@ def initialize_data_offsets():
     # chance of this happening is much less.
     for seg in idautils.Segments():
         name = idc.get_segm_name(seg)
-        if not (name.endswith('__DATA_CONST.__const') or name.endswith('__got')
+        if not (name.endswith('__DATA(_CONST)?.__const') or name.endswith('__got')
                 or name.endswith('__DATA.__data') or name.endswith('__DATA_CONST.__auth_ptr')):
             continue
         for word, ea in idau.ReadWords(seg, idc.get_segm_end(seg), addresses=True):

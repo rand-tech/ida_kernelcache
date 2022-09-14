@@ -14,6 +14,8 @@ import ida_struct
 import ida_bytes
 import ida_funcs
 import ida_name
+import ida_auto
+
 
 def make_log(log_level, module):
     """Create a logging function."""
