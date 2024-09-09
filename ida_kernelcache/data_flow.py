@@ -35,13 +35,14 @@ _INSN_OP_CHG = [
 ]
 
 _INSN_OP_DTYP_SZ = {
-    idaapi.dt_byte:  1,
-    idaapi.dt_word:  2,
+    idaapi.dt_byte: 1,
+    idaapi.dt_word: 2,
     idaapi.dt_dword: 4,
     idaapi.dt_qword: 8,
 }
 
 _ARM64_WRITEBACK = 0x20 | 0x80
+
 
 def _create_flow(function, bounds):
     """Create a FlowChart."""
@@ -49,11 +50,12 @@ def _create_flow(function, bounds):
     if function is not None:
         f = idaapi.get_func(function)
         if f is None:
-            _log(0, 'Bad func {:#x}', func)
+            _log(0, "Bad func {:#x}", func)
             return None
     if bounds is not None:
         b = (start, end)
     return idaapi.FlowChart(f=f, bounds=b)
+
 
 def _add_blocks_to_queue(queue, flow, addresses):
     for ea in addresses:
@@ -62,7 +64,8 @@ def _add_blocks_to_queue(queue, flow, addresses):
                 queue.append(bb)
                 break
         else:
-            _log(2, 'Address {:#x} not contained in any basic block', ea)
+            _log(2, "Address {:#x} not contained in any basic block", ea)
+
 
 def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
     """Process a basic block for _pointer_accesses_data_flow.
@@ -72,9 +75,10 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
     #   MOV             W8, #0x9210
     #   STR             X0, [X19,X8]
     # We try to catch these by keeping track of local constants within a block.
-    RegValue = collections.namedtuple('RegValue', ['type', 'value'])
-    DELTA = 0   # Pointer delta from start of target memory region.
-    CONST = 1   # Constant value
+    RegValue = collections.namedtuple("RegValue", ["type", "value"])
+    DELTA = 0  # Pointer delta from start of target memory region.
+    CONST = 1  # Constant value
+
     def get_reg(reg, type):
         rv = regs.get(reg, None)
         if rv is None or rv.type != type:
@@ -82,7 +86,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
         return rv.value
 
     # Initialize our registers and create accessor functions.
-    regs = { reg: RegValue(DELTA, delta) for reg, delta in list(entry_regs.items()) }
+    regs = {reg: RegValue(DELTA, delta) for reg, delta in list(entry_regs.items())}
 
     # For each instruction in the basic block, see if any new register gets assigned.
     for insn in idau.Instructions(start, end):
@@ -92,7 +96,7 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
         fixed_regs_and_deltas = fix.get(insn.ea)
         if fixed_regs_and_deltas:
             for reg, delta in list(fixed_regs_and_deltas.items()):
-                _log(6, '\t\t{:x}  fix {}={}', insn.ea, reg, delta)
+                _log(6, "\t\t{:x}  fix {}={}", insn.ea, reg, delta)
                 regs[reg] = RegValue(DELTA, delta)
         # If this is an access instruction, record the access. See comment about auxpref below.
         if not (insn.auxpref & _ARM64_WRITEBACK):
@@ -115,54 +119,56 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
                 op_offset = None
                 if op.type == idaapi.o_displ:
                     op_offset = op.addr
-                else: # op.type == idaapi.o_phrase
-                    op_offset_reg = op.specflag1 & 0xff
+                else:  # op.type == idaapi.o_phrase
+                    op_offset_reg = op.specflag1 & 0xFF
                     op_offset = get_reg(op_offset_reg, CONST)
                 if op_offset is None:
                     continue
                 # Record this access.
-                offset = (delta + op_offset) & 0xffffffffffffffff
-                _log(5, '\t\t{:x}  access({})  {}, {}', insn.ea, op.reg, offset, size)
+                offset = (delta + op_offset) & 0xFFFFFFFFFFFFFFFF
+                _log(5, "\t\t{:x}  access({})  {}, {}", insn.ea, op.reg, offset, size)
                 accesses[(offset, size)].add((insn.ea, delta))
         # Update the set of registers pointing to the struct, and the set of known constant
         # registers.
-        if (insn.itype == idaapi.ARM_mov
-                and insn.Op1.type == idaapi.o_reg
-                and insn.Op2.type == idaapi.o_reg
-                and insn.Op3.type == idaapi.o_void
-                and insn.Op1.dtype == idaapi.dt_qword
-                and insn.Op2.dtype == idaapi.dt_qword
-                and insn.Op2.reg in regs):
+        if (
+            insn.itype == idaapi.ARM_mov
+            and insn.Op1.type == idaapi.o_reg
+            and insn.Op2.type == idaapi.o_reg
+            and insn.Op3.type == idaapi.o_void
+            and insn.Op1.dtype == idaapi.dt_qword
+            and insn.Op2.dtype == idaapi.dt_qword
+            and insn.Op2.reg in regs
+        ):
             # MOV Xdst, Xsrc
-            _log(6, '\t\t{:x}  add {}={}', insn.ea, insn.Op1.reg, regs[insn.Op2.reg].value)
+            _log(6, "\t\t{:x}  add {}={}", insn.ea, insn.Op1.reg, regs[insn.Op2.reg].value)
             regs[insn.Op1.reg] = regs[insn.Op2.reg]
-        elif (insn.itype == idaapi.ARM_mov
-                and insn.Op1.type == idaapi.o_reg
-                and insn.Op2.type == idaapi.o_imm
-                and insn.Op3.type == idaapi.o_void
-                and insn.Op1.dtype in (idaapi.dt_dword, idaapi.dt_qword)):
+        elif (
+            insn.itype == idaapi.ARM_mov and insn.Op1.type == idaapi.o_reg and insn.Op2.type == idaapi.o_imm and insn.Op3.type == idaapi.o_void and insn.Op1.dtype in (idaapi.dt_dword, idaapi.dt_qword)
+        ):
             # MOV Xdst, #imm
-            _log(7, '\t\t{:x}  const {}={}', insn.ea, insn.Op1.reg, insn.Op2.value)
+            _log(7, "\t\t{:x}  const {}={}", insn.ea, insn.Op1.reg, insn.Op2.value)
             regs[insn.Op1.reg] = RegValue(CONST, insn.Op2.value)
-        elif (insn.itype == idaapi.ARM_add
-                and insn.Op1.type == idaapi.o_reg
-                and insn.Op2.type == idaapi.o_reg
-                and insn.Op3.type == idaapi.o_imm
-                and insn.Op4.type == idaapi.o_void
-                and insn.Op1.dtype == idaapi.dt_qword
-                and insn.Op2.dtype == idaapi.dt_qword
-                and insn.Op2.reg in regs):
+        elif (
+            insn.itype == idaapi.ARM_add
+            and insn.Op1.type == idaapi.o_reg
+            and insn.Op2.type == idaapi.o_reg
+            and insn.Op3.type == idaapi.o_imm
+            and insn.Op4.type == idaapi.o_void
+            and insn.Op1.dtype == idaapi.dt_qword
+            and insn.Op2.dtype == idaapi.dt_qword
+            and insn.Op2.reg in regs
+        ):
             # ADD Xdst, Xsrc, #amt
             op2 = regs[insn.Op2.reg]
-            _log(6, '\t\t{:x}  add {}={}+{}', insn.ea, insn.Op1.reg, op2.value, insn.Op3.value)
+            _log(6, "\t\t{:x}  add {}={}+{}", insn.ea, insn.Op1.reg, op2.value, insn.Op3.value)
             regs[insn.Op1.reg] = RegValue(op2.type, op2.value + insn.Op3.value)
-        elif (insn.itype == idaapi.ARM_bl or insn.itype == idaapi.ARM_blr):
+        elif insn.itype == idaapi.ARM_bl or insn.itype == idaapi.ARM_blr:
             # A function call (direct or indirect). Any correct compiler should generate code that
             # does not use the temporary registers after a call, but just to be safe, clear all the
             # temporary registers.
-            _log(6, '\t\t{:x}  clear temps', insn.ea)
+            _log(6, "\t\t{:x}  clear temps", insn.ea)
             for r in range(0, 19):
-                regs.pop(getattr(idautils.procregs, 'X{}'.format(r)).reg, None)
+                regs.pop(getattr(idautils.procregs, "X{}".format(r)).reg, None)
         else:
             # This is an unrecognized instruction. Clear all the registers it modifies.
             feature = insn.get_canon_feature()
@@ -177,18 +183,18 @@ def _pointer_accesses_process_block(start, end, fix, entry_regs, accesses):
             for op in insn.ops:
                 if op.type == idaapi.o_void:
                     break
-                if ((feature & _INSN_OP_CHG[op.n] and op.type == idaapi.o_reg)
-                        or (insn.auxpref & _ARM64_WRITEBACK and op.type == idaapi.o_displ)):
-                    _log(6, '\t\t{:x}  clear {}', insn.ea, op.reg)
+                if (feature & _INSN_OP_CHG[op.n] and op.type == idaapi.o_reg) or (insn.auxpref & _ARM64_WRITEBACK and op.type == idaapi.o_displ):
+                    _log(6, "\t\t{:x}  clear {}", insn.ea, op.reg)
                     regs.pop(op.reg, None)
-    return { reg: rv.value for reg, rv in list(regs.items()) if rv.type == DELTA }
+    return {reg: rv.value for reg, rv in list(regs.items()) if rv.type == DELTA}
+
 
 def _pointer_accesses_data_flow(flow, initialization, accesses):
     """Run the data flow for pointer_accesses."""
     # bb_regs maps each block id to another map from register ids to corresponding struct offsets
     # at the start of the block. We don't consider the case where a register could contain more
     # than one possible offset.
-    bb_regs = { bb.id: {} for bb in flow }
+    bb_regs = {bb.id: {} for bb in flow}
     # We'll start by processing those blocks that have an initial value.
     queue = collections.deque()
     _add_blocks_to_queue(queue, flow, initialization)
@@ -207,12 +213,11 @@ def _pointer_accesses_data_flow(flow, initialization, accesses):
     while queue:
         bb = queue.popleft()
         entry_regs = bb_regs[bb.id]
-        _log(3, 'Basic block {}  {:x}-{:x}', bb.id, bb.start_ea, bb.end_ea)
-        _log(4, '\tregs@entry = {}', entry_regs)
-        exit_regs = _pointer_accesses_process_block(bb.start_ea, bb.end_ea, initialization,
-                entry_regs, accesses)
-        _log(4, '\tregs@exit = {}', exit_regs)
-        _log(4, '\tsuccs = {}', [s.id for s in bb.succs()])
+        _log(3, "Basic block {}  {:x}-{:x}", bb.id, bb.start_ea, bb.end_ea)
+        _log(4, "\tregs@entry = {}", entry_regs)
+        exit_regs = _pointer_accesses_process_block(bb.start_ea, bb.end_ea, initialization, entry_regs, accesses)
+        _log(4, "\tregs@exit = {}", exit_regs)
+        _log(4, "\tsuccs = {}", [s.id for s in bb.succs()])
         for succ in bb.succs():
             # Add the registers at the end of the block to the registers at the start of its
             # successors' blocks. This is a union since we will track accesses to any register
@@ -227,6 +232,7 @@ def _pointer_accesses_data_flow(flow, initialization, accesses):
             # If we added a new register, then we'll process the successor block (again).
             if update:
                 queue.append(succ)
+
 
 def pointer_accesses(function=None, bounds=None, initialization=None, accesses=None):
     """Collect the set of accesses to a pointer register.
@@ -277,4 +283,3 @@ def pointer_accesses(function=None, bounds=None, initialization=None, accesses=N
     if create:
         accesses = dict(accesses)
         return accesses
-

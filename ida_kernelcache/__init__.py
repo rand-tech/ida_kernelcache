@@ -21,9 +21,10 @@ from . import stub
 from . import tagged_pointers
 from . import vtable
 
-from .classes import (ClassInfo, collect_class_info, class_info)
-from .kplist  import (kplist_parse)
-from .segment import (kernelcache_kext)
+from .classes import ClassInfo, collect_class_info, class_info
+from .kplist import kplist_parse
+from .segment import kernelcache_kext
+
 
 def kernelcache_process(untag_pointers=True):
     """Process the kernelcache in IDA for the first time.
@@ -43,41 +44,40 @@ def kernelcache_process(untag_pointers=True):
     import idaapi
     import idc
     import ida_auto
+
     def autoanalyze():
         ida_auto.auto_wait()
+
     autoanalyze()
-    if (kernel.kernelcache_format == kernel.KC_12_MERGED
-            and untag_pointers
-            and idaapi.IDA_SDK_VERSION < 720):
-        print('Processing tagged kernelcache pointers')
+    if kernel.kernelcache_format == kernel.KC_12_MERGED and untag_pointers and idaapi.IDA_SDK_VERSION < 720:
+        print("Processing tagged kernelcache pointers")
         tagged_pointers.untag_pointers()
         autoanalyze()
-    print('Initializing segments')
+    print("Initializing segments")
     segment.initialize_segments()
-    print('Initializing data offsets')
+    print("Initializing data offsets")
     offset.initialize_data_offsets()
     autoanalyze()
-    print('Initializing vtables')
+    print("Initializing vtables")
     vtable.initialize_vtables()
     autoanalyze()
-    print('Initializing vtable symbols')
+    print("Initializing vtable symbols")
     vtable.initialize_vtable_symbols()
     autoanalyze()
-    print('Initializing metaclass symbols')
+    print("Initializing metaclass symbols")
     metaclass.initialize_metaclass_symbols()
     if kernel.kernelcache_format == kernel.KC_11_NORMAL:
-        print('Initializing offset symbols')
+        print("Initializing offset symbols")
         offset.initialize_offset_symbols()
         autoanalyze()
-        print('Initializing stub symbols')
+        print("Initializing stub symbols")
         stub.initialize_stub_symbols()
         autoanalyze()
-    print('Initializing vtable method symbols')
+    print("Initializing vtable method symbols")
     vtable.initialize_vtable_method_symbols()
-    print('Initializing vtable structs')
+    print("Initializing vtable structs")
     class_struct.initialize_vtable_structs()
-    print('Initializing class structs')
+    print("Initializing class structs")
     class_struct.initialize_class_structs()
     autoanalyze()
-    print('Done')
-
+    print("Done")

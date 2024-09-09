@@ -9,8 +9,10 @@
 import base64
 from xml.etree.ElementTree import TreeBuilder, XMLParser
 
+
 class _KPlistBuilder(object):
     """A companion class for XMLTreeBuilder to parse a kernel-style property list."""
+
     # IMPLEMENTATION IDEA: The XMLTreeBuilder calls us at four points: when there's a new start
     # tag, when there's a new end tag, when there's data from a tag, and when there's no more data.
     # We build objects incrementally out of these notifications. Each tag type can implement
@@ -29,27 +31,27 @@ class _KPlistBuilder(object):
 
     def __init__(self):
         self.collection_stack = []
-        self.ids              = {}
-        self.current_data     = []
-        self.current_id       = None
-        self.current_idref    = None
-        self.current_key      = None
-        self.root             = None
-        self.start_handler    = {
-                'dict':       self.start_dict,
-                'array':      self.start_array,
+        self.ids = {}
+        self.current_data = []
+        self.current_id = None
+        self.current_idref = None
+        self.current_key = None
+        self.root = None
+        self.start_handler = {
+            "dict": self.start_dict,
+            "array": self.start_array,
         }
-        self.end_handler      = {
-                'dict':       self.end_dict,
-                'key':        self.end_key,
-                'true':       self.end_true,
-                'false':      self.end_false,
-                'integer':    self.end_integer,
-                'string':     self.end_string,
-                'data':       self.end_data,
+        self.end_handler = {
+            "dict": self.end_dict,
+            "key": self.end_key,
+            "true": self.end_true,
+            "false": self.end_false,
+            "integer": self.end_integer,
+            "string": self.end_string,
+            "data": self.end_data,
         }
-        self.attributes       = {
-                'integer':    ('size',),
+        self.attributes = {
+            "integer": ("size",),
         }
         self.tags = set(self.start_handler.keys()).union(list(self.end_handler.keys()))
 
@@ -59,27 +61,26 @@ class _KPlistBuilder(object):
         intervening_data = self.get_data().strip()
         assert not intervening_data and not self.current_id
         # Check that the attributes are allowed.
-        for attrname in set(attr.keys()).difference(('ID', 'IDREF')):
+        for attrname in set(attr.keys()).difference(("ID", "IDREF")):
             if attrname not in self.attributes[tag]:
                 raise ValueError('illegal attribute "{}" for tag "{}"'.format(attrname, tag))
         # Handle IDREF attribute.
         if self.current_idref is not None:
-            raise ValueError('non-empty IDREF')
-        self.current_idref = self.get_id_attr(attr, 'IDREF')
+            raise ValueError("non-empty IDREF")
+        self.current_idref = self.get_id_attr(attr, "IDREF")
         if self.current_idref is not None:
             if self.current_idref not in self.ids:
-                raise ValueError('tag has IDREF to non-existent ID')
+                raise ValueError("tag has IDREF to non-existent ID")
             original_tag, _ = self.ids[self.current_idref]
             if tag != original_tag:
-                raise ValueError('tag "{}" has IDREF to element with different tag "{}"'
-                        .format(tag, original_tag))
+                raise ValueError('tag "{}" has IDREF to element with different tag "{}"'.format(tag, original_tag))
             if len(attr) > 1:
-                raise ValueError('tag has IDREF and another attribute')
+                raise ValueError("tag has IDREF and another attribute")
             return
         # Handle ID attribute.
-        self.current_id = self.get_id_attr(attr, 'ID')
+        self.current_id = self.get_id_attr(attr, "ID")
         if self.current_id is not None and self.current_id in self.ids:
-            raise ValueError('tag has previously used ID attribute')
+            raise ValueError("tag has previously used ID attribute")
         # Process the start tag if this is not an IDREF.
         handler = self.start_handler.get(tag, None)
         if handler:
@@ -112,7 +113,7 @@ class _KPlistBuilder(object):
 
     def data(self, data):
         if self.current_idref is not None:
-            raise ValueError('non-empty IDREF')
+            raise ValueError("non-empty IDREF")
         self.current_data.append(data)
 
     def close(self):
@@ -127,7 +128,7 @@ class _KPlistBuilder(object):
             try:
                 return int(id_attr, 0)
             except ValueError:
-                raise ValueError('invalid {} attribute'.format(name))
+                raise ValueError("invalid {} attribute".format(name))
         return None
 
     def add_object(self, tag, value):
@@ -135,12 +136,12 @@ class _KPlistBuilder(object):
             assert self.current_id not in self.ids
             self.ids[self.current_id] = (tag, value)
             self.current_id = None
-        if tag == 'key':
+        if tag == "key":
             # We are adding a key to a dictionary but don't yet have the value.
             if not self.collection_stack or type(self.collection_stack[-1]) != dict:
-                raise ValueError('invalid key tag not in a dict')
+                raise ValueError("invalid key tag not in a dict")
             if self.current_key:
-                raise ValueError('missing value for key in dict')
+                raise ValueError("missing value for key in dict")
             self.current_key = value
         elif self.current_key is not None:
             # We are adding a key and value to a dictionary.
@@ -157,10 +158,10 @@ class _KPlistBuilder(object):
             self.collection_stack[-1].append(value)
         else:
             # We have two values in a row not in a container.
-            raise ValueError('unexpected element not in a container')
+            raise ValueError("unexpected element not in a container")
 
     def get_data(self):
-        data = ''.join(self.current_data)
+        data = "".join(self.current_data)
         self.current_data = []
         return data
 
@@ -174,7 +175,7 @@ class _KPlistBuilder(object):
 
     def end_dict(self):
         if self.current_key is not None:
-            raise ValueError('missing value for key in dict')
+            raise ValueError("missing value for key in dict")
 
     def end_key(self):
         assert self.current_key is None
@@ -182,12 +183,12 @@ class _KPlistBuilder(object):
 
     def end_true(self):
         if self.get_data():
-            raise ValueError('true tag must be empty')
+            raise ValueError("true tag must be empty")
         return True
 
     def end_false(self):
         if self.get_data():
-            raise ValueError('false tag must be empty')
+            raise ValueError("false tag must be empty")
         return False
 
     def end_integer(self):
@@ -200,14 +201,14 @@ class _KPlistBuilder(object):
     def end_data(self):
         return base64.b64decode(self.get_data())
 
+
 def kplist_parse(plist):
     """Parse a kernel-style property list."""
     try:
         builder = _KPlistBuilder()
-        parser  = XMLParser(target=builder)
+        parser = XMLParser(target=builder)
         parser.feed(plist)
         return parser.close()
     except Exception as e:
         print(e)
         return None
-

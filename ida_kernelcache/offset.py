@@ -17,6 +17,7 @@ from . import stub
 
 _log = idau.make_log(1, __name__)
 
+
 def initialize_data_offsets():
     """Convert offsets in data segments into offsets in IDA.
 
@@ -28,18 +29,19 @@ def initialize_data_offsets():
     # chance of this happening is much less.
     for seg in idautils.Segments():
         name = idc.get_segm_name(seg)
-        if not (name.endswith('__DATA(_CONST)?.__const') or name.endswith('__got')
-                or name.endswith('__DATA.__data') or name.endswith('__DATA_CONST.__auth_ptr')):
+        if not (name.endswith("__DATA(_CONST)?.__const") or name.endswith("__got") or name.endswith("__DATA.__data") or name.endswith("__DATA_CONST.__auth_ptr")):
             continue
         for word, ea in idau.ReadWords(seg, idc.get_segm_end(seg), addresses=True):
             if idau.is_mapped(word, value=False):
                 idc.op_plain_offset(ea, 0, 0)
 
-kernelcache_offset_suffix = '___offset_'
+
+kernelcache_offset_suffix = "___offset_"
 """The suffix that gets appended to a symbol to create the offset name, without the offset ID."""
 
 _offset_regex = re.compile(r"^(\S+)" + kernelcache_offset_suffix + r"\d+$")
 """A regular expression to match and extract the target name from an offset symbol."""
+
 
 def offset_name_target(offset_name):
     """Get the target to which an offset name refers.
@@ -51,31 +53,32 @@ def offset_name_target(offset_name):
         return None
     return match.group(1)
 
+
 def _process_offset(offset, ea, next_offset):
     """Process an offset in a __got section."""
     # Convert the address containing the offset into an offset in IDA, but continue if it fails.
     if not idc.op_plain_offset(ea, 0, 0):
-        _log(1, 'Could not convert {:#x} into an offset', ea)
+        _log(1, "Could not convert {:#x} into an offset", ea)
     # Get the name to which the offset refers.
     name = idau.get_ea_name(offset, user=True)
     if not name:
-        _log(3, 'Offset at address {:#x} has target {:#x} without a name', ea, offset)
+        _log(3, "Offset at address {:#x} has target {:#x} without a name", ea, offset)
         return False
     # Make sure this isn't an offset to another stub or to a jump function to another stub. See the
     # comment in _symbolicate_stub.
     if stub.symbol_references_stub(name):
-        _log(1, 'Offset at address {:#x} has target {:#x} (name {}) that references a stub', ea,
-                offset, name)
+        _log(1, "Offset at address {:#x} has target {:#x} (name {}) that references a stub", ea, offset, name)
         return False
     # Set the new name for the offset.
     symbol = next_offset(name)
     if symbol is None:
-        _log(0, 'Could not generate offset symbol for {}: names exhausted', name)
+        _log(0, "Could not generate offset symbol for {}: names exhausted", name)
         return False
     if not idau.set_ea_name(ea, symbol, auto=True):
-        _log(2, 'Could not set name {} for offset at {:#x}', symbol, ea)
+        _log(2, "Could not set name {} for offset at {:#x}", symbol, ea)
         return False
     return True
+
 
 def _process_offsets_section(segstart, next_offset):
     """Process all the offsets in a __got section."""
@@ -85,7 +88,8 @@ def _process_offsets_section(segstart, next_offset):
             if idau.is_mapped(offset, value=False):
                 _process_offset(offset, ea, next_offset)
             else:
-                _log(-1, 'Offset {:#x} at address {:#x} is unmapped', offset, ea)
+                _log(-1, "Offset {:#x} at address {:#x} is unmapped", offset, ea)
+
 
 def initialize_offset_symbols():
     """Populate IDA with information about the offsets in an iOS kernelcache.
@@ -98,8 +102,7 @@ def initialize_offset_symbols():
     next_offset = internal.make_name_generator(kernelcache_offset_suffix)
     for ea in idautils.Segments():
         segname = idc.get_segm_name(ea)
-        if not segname.endswith('__got'):
+        if not segname.endswith("__got"):
             continue
-        _log(2, 'Processing segment {}', segname)
+        _log(2, "Processing segment {}", segname)
         _process_offsets_section(ea, next_offset)
-

@@ -18,12 +18,13 @@ from . import stub
 
 _log = idau.make_log(0, __name__)
 
-VTABLE_OFFSET      =  2
+VTABLE_OFFSET = 2
 """The first few entries of the virtual method tables in the kernelcache are empty."""
 MIN_VTABLE_METHODS = 12
 """The minimum number of methods in a virtual method table."""
-MIN_VTABLE_LENGTH  = VTABLE_OFFSET + MIN_VTABLE_METHODS
+MIN_VTABLE_LENGTH = VTABLE_OFFSET + MIN_VTABLE_METHODS
 """The minimum length of a virtual method table in words, including the initial empty entries."""
+
 
 def vtable_length(ea, end=None, scan=False):
     """Find the length of a virtual method table.
@@ -54,6 +55,7 @@ def vtable_length(ea, end=None, scan=False):
         definitely not the start of a vtable, then possible is False and length is the number of
         words that can be skipped when searching for the next vtable.
     """
+
     # TODO: This function should be reorganized. The better way of doing it is to count the number
     # of zero entries, then the number of nonzero entries, then decide based on that. Less
     # special-casing that way.
@@ -63,6 +65,7 @@ def vtable_length(ea, end=None, scan=False):
         if scan:
             return possible, length
         return length if possible else 0
+
     # Initialize default values.
     if end is None:
         end = idc.get_segm_end(ea)
@@ -104,6 +107,7 @@ def vtable_length(ea, end=None, scan=False):
     # Now it's simple: We are valid if the length is long enough, invalid if it's too short.
     return return_value(length >= MIN_VTABLE_LENGTH, length)
 
+
 def convert_vtable_to_offsets(vtable, length=None):
     """Convert a vtable into a sequence of offsets.
 
@@ -119,7 +123,7 @@ def convert_vtable_to_offsets(vtable, length=None):
     if length is None:
         length = vtable_length(vtable)
     if not length:
-        _log(0, 'Address {:#x} is not a vtable', vtable)
+        _log(0, "Address {:#x} is not a vtable", vtable)
         return False
     successful = True
     for address in idau.Addresses(vtable, length=length, step=idau.WORD_SIZE):
@@ -128,23 +132,26 @@ def convert_vtable_to_offsets(vtable, length=None):
             head = idaapi.get_item_head(address)
             idaapi.del_items(head)
         if not idc.op_plain_offset(address, 0, 0):
-            _log(0, 'Could not change address {:#x} into an offset', address)
+            _log(0, "Could not change address {:#x} into an offset", address)
             successful = False
     return successful
+
 
 def _convert_vtable_methods_to_functions(vtable, length):
     """Convert each virtual method in the vtable into an IDA function."""
     for vmethod in vtable_methods(vtable, length=length):
         if not idau.force_function(vmethod):
-            _log(0, 'Could not convert virtual method {:#x} into a function', vmethod)
+            _log(0, "Could not convert virtual method {:#x} into a function", vmethod)
+
 
 def initialize_vtables():
     """Convert vtables into offsets and ensure that virtual methods are IDA functions."""
     classes.collect_class_info()
     for vtable, length in list(classes.vtables.items()):
         if not convert_vtable_to_offsets(vtable, length):
-            _log(0, 'Could not convert vtable at address {:x} into offsets', vtable)
+            _log(0, "Could not convert vtable at address {:x} into offsets", vtable)
         _convert_vtable_methods_to_functions(vtable, length)
+
 
 def add_vtable_symbol(vtable, classname):
     """Add a symbol for the virtual method table at the specified address.
@@ -158,10 +165,10 @@ def add_vtable_symbol(vtable, classname):
     """
     vtable_symbol = vtable_symbol_for_class(classname)
     if not idau.set_ea_name(vtable, vtable_symbol, rename=True):
-        _log(0, 'Address {:#x} already has name {} instead of vtable symbol {}'
-                .format(vtable, idau.get_ea_name(vtable), vtable_symbol))
+        _log(0, "Address {:#x} already has name {} instead of vtable symbol {}".format(vtable, idau.get_ea_name(vtable), vtable_symbol))
         return False
     return True
+
 
 def initialize_vtable_symbols():
     """Populate IDA with virtual method table symbols for an iOS kernelcache."""
@@ -169,16 +176,15 @@ def initialize_vtable_symbols():
     for classname, classinfo in list(classes.class_info.items()):
         if classinfo.vtable:
             if classinfo.superclass_name and classes.class_info[classinfo.superclass_name].vtable == classinfo.vtable:
-                _log(3, 'Class {} has the same vtable as its parent {} at: {:#x}', 
-                classname, classinfo.superclass_name, classinfo.vtable)
+                _log(3, "Class {} has the same vtable as its parent {} at: {:#x}", classname, classinfo.superclass_name, classinfo.vtable)
                 continue
 
-            _log(3, 'Class {} has vtable at {:#x}', classname, classinfo.vtable)
+            _log(3, "Class {} has vtable at {:#x}", classname, classinfo.vtable)
             if not add_vtable_symbol(classinfo.vtable, classname):
-                _log(0, 'Could not add vtable symbol for class {} at address {:#x}', classname,
-                        classinfo.vtable)
+                _log(0, "Could not add vtable symbol for class {} at address {:#x}", classname, classinfo.vtable)
         else:
-            _log(0, 'Class {} has no known vtable', classname)
+            _log(0, "Class {} has no known vtable", classname)
+
 
 def class_vtable_method(classinfo, index):
     """Get the virtual method for a class by index.
@@ -194,6 +200,7 @@ def class_vtable_method(classinfo, index):
     if index >= count:
         return None
     return idau.read_word(methods + index * idau.WORD_SIZE)
+
 
 def vtable_methods(vtable, start=VTABLE_OFFSET, length=None, nmethods=None):
     """Get the methods in a virtual method table.
@@ -223,6 +230,7 @@ def vtable_methods(vtable, start=VTABLE_OFFSET, length=None, nmethods=None):
     for i in range(start, length):
         yield idau.read_word(vtable + i * idau.WORD_SIZE)
 
+
 def class_vtable_methods(classinfo, nmethods=None, new=False):
     """Get the methods in a virtual method table for a class.
 
@@ -243,11 +251,10 @@ def class_vtable_methods(classinfo, nmethods=None, new=False):
         start = classinfo.superclass.vtable_length
     else:
         start = VTABLE_OFFSET
-    return vtable_methods(classinfo.vtable, start=start, length=classinfo.vtable_length,
-            nmethods=nmethods)
+    return vtable_methods(classinfo.vtable, start=start, length=classinfo.vtable_length, nmethods=nmethods)
 
-def vtable_overrides(class_vtable, super_vtable, class_vlength=None, super_vlength=None,
-        new=False, methods=False):
+
+def vtable_overrides(class_vtable, super_vtable, class_vlength=None, super_vlength=None, new=False, methods=False):
     """Get the overrides of a virtual method table.
 
     A generator that returns the index of each override in the virtual method table. The initial
@@ -273,8 +280,8 @@ def vtable_overrides(class_vtable, super_vtable, class_vlength=None, super_vleng
         super_vlength = vtable_length(super_vtable)
     assert class_vlength >= super_vlength >= 0
     # Skip the first VTABLE_OFFSET entries.
-    class_vtable  += VTABLE_OFFSET * idau.WORD_SIZE
-    super_vtable  += VTABLE_OFFSET * idau.WORD_SIZE
+    class_vtable += VTABLE_OFFSET * idau.WORD_SIZE
+    super_vtable += VTABLE_OFFSET * idau.WORD_SIZE
     class_vlength -= VTABLE_OFFSET
     super_vlength -= VTABLE_OFFSET
     # How many methods are we iterating over?
@@ -296,6 +303,7 @@ def vtable_overrides(class_vtable, super_vtable, class_vlength=None, super_vleng
                 yield i, class_method, super_method
             else:
                 yield i
+
 
 def class_vtable_overrides(classinfo, superinfo=None, new=False, methods=False):
     """Get the overrides of a virtual method table for a class.
@@ -324,8 +332,7 @@ def class_vtable_overrides(classinfo, superinfo=None, new=False, methods=False):
             return
     else:
         if superinfo not in classinfo.ancestors():
-            raise ValueError('Invalid arguments: classinfo={}, superinfo={}'.format(classinfo,
-                superinfo))
+            raise ValueError("Invalid arguments: classinfo={}, superinfo={}".format(classinfo, superinfo))
     # Get the vtable for the class.
     class_vtable = classinfo.vtable
     class_vlength = classinfo.vtable_length
@@ -336,15 +343,15 @@ def class_vtable_overrides(classinfo, superinfo=None, new=False, methods=False):
         try:
             assert class_vlength >= super_vlength
         except AssertionError:
-            _log(0, 'Assertion info from {!r} with super {!r}', classinfo, superinfo)
+            _log(0, "Assertion info from {!r} with super {!r}", classinfo, superinfo)
             raise
     else:
         super_vtable = 0
         super_vlength = 0
     # Run the generator.
-    for x in vtable_overrides(class_vtable, super_vtable, class_vlength=class_vlength,
-            super_vlength=super_vlength, new=new, methods=methods):
+    for x in vtable_overrides(class_vtable, super_vtable, class_vlength=class_vlength, super_vlength=super_vlength, new=new, methods=methods):
         yield x
+
 
 def class_from_vtable_method_symbol(method_symbol):
     """Get the base class in a vtable method symbol.
@@ -354,10 +361,11 @@ def class_from_vtable_method_symbol(method_symbol):
     demangled = idc.demangle_name(method_symbol, idc.get_inf_attr(idc.INF_SHORT_DEMNAMES))
     if not demangled:
         return None
-    classname = demangled.split('::', 1)[0]
+    classname = demangled.split("::", 1)[0]
     if classname == demangled:
         return None
     return classname
+
 
 def _vtable_method_symbol_substitute_class(method_symbol, new_class, old_class=None):
     """Create a new method symbol by substituting the class to which the method belongs."""
@@ -366,27 +374,28 @@ def _vtable_method_symbol_substitute_class(method_symbol, new_class, old_class=N
         old_class = class_from_vtable_method_symbol(method_symbol)
         if not old_class:
             return None
-    old_class_part = '{}{}'.format(len(old_class), old_class)
-    #new_class_part = '{}{}'.format(len(new_class), new_class)
+    old_class_part = "{}{}".format(len(old_class), old_class)
+    # new_class_part = '{}{}'.format(len(new_class), new_class)
     # TODO: this is a temp solution to have templated classes names resolved well. Need a permanent one.
-    new_class_part = global_name(new_class).replace("__ZN", "").replace("__Z", "") 
+    new_class_part = global_name(new_class).replace("__ZN", "").replace("__Z", "")
     if old_class_part not in method_symbol:
         return None
     return method_symbol.replace(old_class_part, new_class_part, 1)
 
-_ignore_vtable_methods = (
-    '___cxa_pure_virtual'
-)
+
+_ignore_vtable_methods = "___cxa_pure_virtual"
+
 
 def _ok_to_rename_method(override, name):
     """Some method names are ok to rename."""
-    return (name.startswith('j_') and idau.iterlen(idautils.XrefsTo(override)) == 1)
+    return name.startswith("j_") and idau.iterlen(idautils.XrefsTo(override)) == 1
+
 
 def _bad_name_dont_use_as_override(name):
     """Some names shouldn't propagate into vtable symbols."""
     # Ignore jumps and stubs and fixed known special values.
-    return (name.startswith('j_') or stub.symbol_references_stub(name)
-            or name in _ignore_vtable_methods)
+    return name.startswith("j_") or stub.symbol_references_stub(name) or name in _ignore_vtable_methods
+
 
 def _symbolicate_overrides_for_classinfo(classinfo, processed):
     """A recursive function to symbolicate vtable overrides for a class and its superclasses."""
@@ -409,16 +418,16 @@ def _symbolicate_overrides_for_classinfo(classinfo, processed):
         # Get the new override name if we substitute for the override class's name.
         new_name = _vtable_method_symbol_substitute_class(original_name, classinfo.classname)
         if not new_name:
-            _log(0, 'Could not substitute class {} into method symbol {} for override {:#x}',
-                    classinfo.classname, original_name, override)
+            _log(0, "Could not substitute class {} into method symbol {} for override {:#x}", classinfo.classname, original_name, override)
             continue
         # Now that we have the new name, set it.
         if override_name:
-            _log(2, 'Renaming {} -> {}', override_name, new_name)
+            _log(2, "Renaming {} -> {}", override_name, new_name)
         if not idau.set_ea_name(override, new_name, rename=True):
-            _log(0, 'Could not set name {} for method {:#x}', new_name, override)
+            _log(0, "Could not set name {} for method {:#x}", new_name, override)
     # We're done.
     processed.add(classinfo)
+
 
 def initialize_vtable_method_symbols():
     """Symbolicate overridden methods in a virtual method table.
@@ -429,4 +438,3 @@ def initialize_vtable_method_symbols():
     classes.collect_class_info()
     for classinfo in list(classes.class_info.values()):
         _symbolicate_overrides_for_classinfo(classinfo, processed)
-
