@@ -401,7 +401,9 @@ def _read_struct_member_once(ea, flags, size, member_sid, member_size, asobject)
 
 def _read_struct_member(struct, sid, union, ea, offset, name, size, asobject):
     """Read a member into a struct for read_struct."""
-    flags = idc.get_member_flag(sid, offset)
+    # sid: structure type ID
+    # flags = idc.get_member_flag(sid, offset)
+    flags = ida_bytes.get_flags(sid)
     assert flags != -1
     # Extra information for parsing a struct.
     member_sid, member_ssize = None, None
