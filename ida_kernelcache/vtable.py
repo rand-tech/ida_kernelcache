@@ -9,8 +9,8 @@ from itertools import islice, takewhile
 
 import idc
 import idautils
-import idaapi
-
+import ida_ida
+import ida_idp
 from .symbol import vtable_symbol_for_class, global_name
 from . import ida_utilities as idau
 from . import classes
@@ -101,8 +101,7 @@ def vtable_length(ea, end=None, scan=False):
     # Now we know that we have at least one nonzero value, our job is easier. Get the full length
     # of the vtable, including the first VTABLE_OFFSET entries and the subsequent nonzero entries,
     # until either we find a zero word (not included), or an address which is not in the range of kernel addresses  or run out of words in the stream.
-    info = idaapi.get_inf_structure()
-    min_addr, max_addr = info.min_ea, info.max_ea
+    min_addr, max_addr = ida_ida.inf_get_min_ea(), ida_ida.inf_get_max_ea()
     length = VTABLE_OFFSET + 1 + idau.iterlen(takewhile(lambda word: word != 0 and min_addr < word < max_addr, words))
     # Now it's simple: We are valid if the length is long enough, invalid if it's too short.
     return return_value(length >= MIN_VTABLE_LENGTH, length)
@@ -128,9 +127,9 @@ def convert_vtable_to_offsets(vtable, length=None):
     successful = True
     for address in idau.Addresses(vtable, length=length, step=idau.WORD_SIZE):
         # Handle addresses that are part of ALIGN directives
-        if idaapi.is_align_insn(address) != 0:
-            head = idaapi.get_item_head(address)
-            idaapi.del_items(head)
+        if ida_idp.is_align_insn(address) != 0:
+            head = idc.get_item_head(address)
+            idc.del_items(head)
         if not idc.op_plain_offset(address, 0, 0):
             _log(0, "Could not change address {:#x} into an offset", address)
             successful = False

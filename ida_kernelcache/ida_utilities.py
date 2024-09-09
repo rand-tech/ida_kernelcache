@@ -1,20 +1,13 @@
-#
-# ida_kernelcache/ida_utilities.py
-# Brandon Azad
-#
-# Some utility functions to make working with IDA easier.
-#
-
 from collections import deque
 
-import idc
-import idautils
-import idaapi
-import ida_struct
 import ida_bytes
 import ida_funcs
+import ida_ida
 import ida_name
-import ida_auto
+import ida_struct
+import idaapi
+import idautils
+import idc
 
 read_ptr = idaapi.get_qword if idaapi.get_inf_structure().is_64bit() else idaapi.get_dword
 
@@ -47,17 +40,16 @@ LITTLE_ENDIAN = True
 def _initialize():
     # https://reverseengineering.stackexchange.com/questions/11396/how-to-get-the-cpu-architecture-via-idapython
     global WORD_SIZE, LITTLE_ENDIAN, BIG_ENDIAN
-    info = idaapi.get_inf_structure()
-    if info.is_64bit():
+    if ida_ida.inf_is_64bit():
         WORD_SIZE = 8
-    elif info.is_32bit():
+    elif ida_ida.inf_is_32bit_exactly():
         WORD_SIZE = 4
     else:
         WORD_SIZE = 2
     try:
-        BIG_ENDIAN = info.is_be()
+        BIG_ENDIAN = ida_ida.inf_is_be()
     except:
-        BIG_ENDIAN = info.mf
+        BIG_ENDIAN = True # wtf is info.mf?
     LITTLE_ENDIAN = not BIG_ENDIAN
 
 
