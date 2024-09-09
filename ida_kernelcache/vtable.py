@@ -7,14 +7,15 @@
 
 from itertools import islice, takewhile
 
-import idc
-import idautils
 import ida_ida
 import ida_idp
-from .symbol import vtable_symbol_for_class, global_name
-from . import ida_utilities as idau
+import idautils
+import idc
+
 from . import classes
+from . import ida_utilities as idau
 from . import stub
+from .symbol import global_name, vtable_symbol_for_class
 
 _log = idau.make_log(0, __name__)
 

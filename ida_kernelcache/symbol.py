@@ -12,8 +12,8 @@ strings.
 
 import re
 
-import idc
 import idaapi
+import idc
 
 
 def method_name(symbol):

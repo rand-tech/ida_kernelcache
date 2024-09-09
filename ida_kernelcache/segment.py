@@ -7,8 +7,9 @@
 #
 
 import re
+
 import idc
-from ida_segment import SEGPERM_READ, SEGPERM_WRITE, SEGPERM_EXEC
+from ida_segment import SEGPERM_EXEC, SEGPERM_READ, SEGPERM_WRITE
 
 from . import ida_utilities as idau
 from . import kernel

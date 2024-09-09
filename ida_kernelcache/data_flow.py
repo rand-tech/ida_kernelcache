@@ -17,9 +17,9 @@ this module does not take that approach, for reasons of simplicity and efficienc
 
 import collections
 
-import idc
-import idautils
 import idaapi
+import idautils
+import idc
 
 from . import ida_utilities as idau
 

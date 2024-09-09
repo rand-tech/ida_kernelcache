@@ -4,14 +4,7 @@
 #
 # A module to build an IDA structure automatically from code accesses.
 #
-
-import collections
-
 import idc
-import idautils
-
-# import ida_struct
-import idaapi
 
 from . import ida_utilities as idau
 

@@ -7,10 +7,10 @@
 
 import re
 
-import idc
-import idautils
-import idaapi
 import ida_bytes
+import idaapi
+import idautils
+import idc
 
 from . import ida_utilities as idau
 from . import internal

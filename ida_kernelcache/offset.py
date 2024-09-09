@@ -7,13 +7,11 @@
 
 import re
 
-import idc
 import idautils
+import idc
 
 from . import ida_utilities as idau
-from . import internal
-from . import kernel
-from . import stub
+from . import internal, kernel, stub
 
 _log = idau.make_log(1, __name__)
 

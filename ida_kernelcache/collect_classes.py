@@ -5,23 +5,18 @@
 # Collects information about C++ classes in a kernelcache.
 #
 
+import re
 from collections import defaultdict
 
-import idc
-import idautils
-import idaapi
-
-import idautils
-import ida_xref
 import ida_hexrays
+import ida_xref
+import idaapi
+import idautils
+import idc
 
-from . import ida_utilities as idau
 from . import classes
-from . import segment
-from . import symbol
-from . import vtable
-from . import kernel
-import re
+from . import ida_utilities as idau
+from . import kernel, segment, symbol, vtable
 
 _log = idau.make_log(2, __name__)
 

@@ -11,8 +11,8 @@ In an alternative implementation, we could just add cross-references in IDA. How
 approach is better because it is closer to what the kernelcache looks like at runtime.
 """
 
-import idc
 import idautils
+import idc
 
 from . import ida_utilities as idau
 from . import kernel

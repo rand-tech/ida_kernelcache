@@ -7,21 +7,8 @@
 
 # This isn't kernelcache-specific, but it's useful to have access to in the interpreter and other
 # scripts.
-from . import ida_utilities
-
-from . import build_struct
-from . import class_struct
-from . import classes
-from . import kernel
-from . import kplist
-from . import metaclass
-from . import offset
-from . import segment
-from . import stub
-from . import tagged_pointers
-from . import vtable
-
-from .classes import ClassInfo, collect_class_info, class_info
+from . import build_struct, class_struct, classes, ida_utilities, kernel, kplist, metaclass, offset, segment, stub, tagged_pointers, vtable
+from .classes import ClassInfo, class_info, collect_class_info
 from .kplist import kplist_parse
 from .segment import kernelcache_kext
 
@@ -41,9 +28,9 @@ def kernelcache_process(untag_pointers=True):
         * Symbolicates methods in vtables based on the method names in superclasses.
         * Creates IDA structs representing the C++ classes in the kernel.
     """
+    import ida_auto
     import idaapi
     import idc
-    import ida_auto
 
     def autoanalyze():
         ida_auto.auto_wait()

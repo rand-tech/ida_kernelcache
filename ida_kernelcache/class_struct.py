@@ -118,16 +118,13 @@ avoid over-complicating this module by trying to do that here. Instead, I imagin
 
 import collections
 
-import idc
-import idautils
 import idaapi
+import idautils
+import idc
 
+from . import build_struct, classes, data_flow
 from . import ida_utilities as idau
-from . import build_struct
-from . import classes
-from . import data_flow
-from . import symbol
-from . import vtable
+from . import symbol, vtable
 
 _log = idau.make_log(1, __name__)
 

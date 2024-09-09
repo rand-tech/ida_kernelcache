@@ -10,6 +10,7 @@ import idc
 
 read_ptr = idaapi.get_qword if idaapi.inf_is_64bit() else idaapi.get_dword
 
+
 def make_log(log_level, module):
     """Create a logging function."""
 
@@ -47,7 +48,7 @@ def _initialize():
     try:
         BIG_ENDIAN = ida_ida.inf_is_be()
     except:
-        BIG_ENDIAN = True # wtf is info.mf?
+        BIG_ENDIAN = True  # wtf is info.mf?
     LITTLE_ENDIAN = not BIG_ENDIAN
 
 
