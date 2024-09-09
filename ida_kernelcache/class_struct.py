@@ -121,7 +121,8 @@ import collections
 import idc
 import idautils
 import idaapi
-import ida_struct
+
+# import ida_struct
 
 from . import ida_utilities as idau
 from . import build_struct
@@ -133,6 +134,7 @@ from . import vtable
 _log = idau.make_log(1, __name__)
 
 #### Vtable generation ############################################################################
+
 
 def _populate_vmethods_struct(sid, classinfo):
     """Populate the ::vmethods struct."""
@@ -146,26 +148,27 @@ def _populate_vmethods_struct(sid, classinfo):
         if index < super_nmethods:
             continue
         # Get the base name of the method (i.e., for Class::method(args), extract method).
-        sym  = idau.get_ea_name(vmethod, user=True)
+        sym = idau.get_ea_name(vmethod, user=True)
         base = symbol.method_name(sym)
         if not base:
-            base = 'method_{}'.format(index)
+            base = "method_{}".format(index)
         base = symbol.make_ident(base)
         # We'll try to use the base as our method name, but if it already exists, try appending
         # "_1", "_2", etc.
-        name   = base
+        name = base
         suffix = 0
         while name in members:
             suffix += 1
-            name = '{}_{}'.format(base, suffix)
+            name = "{}_{}".format(base, suffix)
         members.add(name)
         # Create the member.
         offset = (index - super_nmethods) * idau.WORD_SIZE
-        ret = idau.struct_add_ptr(sid, name, offset, type='void *')
+        ret = idau.struct_add_ptr(sid, name, offset, type="void *")
         if ret != 0:
-            _log(0, 'Could not create {}::vmethods.{}: {}', classinfo.classname, name, ret)
+            _log(0, "Could not create {}::vmethods.{}: {}", classinfo.classname, name, ret)
             return False
     return True
+
 
 def _populate_vtable_struct(sid, classinfo):
     """Populate the ::vtable struct."""
@@ -182,34 +185,37 @@ def _populate_vtable_struct(sid, classinfo):
         if vmethods_size == 0:
             continue
         # Get the sid for ci's ::vmethods.
-        vmethods_sid = idau.struct_open(ci.classname + '::vmethods')
+        vmethods_sid = idau.struct_open(ci.classname + "::vmethods")
         if vmethods_sid is None:
-            _log(0, 'Could not find {}::vmethods', ci.classname)
+            _log(0, "Could not find {}::vmethods", ci.classname)
             return False
 
         clean_name = symbol.clean_templated_name(ci.classname)
         # Add this ::vmethods slice to the ::vtable struct.
         ret = idau.struct_add_struct(sid, clean_name, offset, vmethods_sid)
         if ret != 0:
-            _log(0, 'Could not add {}::vmethods to {}::vtable errno:{}', clean_name, classinfo.classname, ret)
+            _log(0, "Could not add {}::vmethods to {}::vtable errno:{}", clean_name, classinfo.classname, ret)
             return False
     return True
 
+
 def _create_vmethods_struct(classinfo):
     """Create the ::vmethods struct for a C++ class."""
-    sid = idau.struct_create(classinfo.classname + '::vmethods')
+    sid = idau.struct_create(classinfo.classname + "::vmethods")
     if sid is None:
-        _log(0, 'Could not create {}::vmethods', classinfo.classname)
+        _log(0, "Could not create {}::vmethods", classinfo.classname)
         return False
     return _populate_vmethods_struct(sid, classinfo)
 
+
 def _create_vtable_struct(classinfo):
     """Create the ::vtable struct for a C++ class."""
-    sid = idau.struct_create(classinfo.classname + '::vtable')
+    sid = idau.struct_create(classinfo.classname + "::vtable")
     if sid is None:
-        _log(0, 'Could not create {}::vtable', classinfo.classname)
+        _log(0, "Could not create {}::vtable", classinfo.classname)
         return False
     return _populate_vtable_struct(sid, classinfo)
+
 
 def initialize_vtable_structs():
     """Create IDA structs representing the C++ virtual method tables in the kernel."""
@@ -219,27 +225,29 @@ def initialize_vtable_structs():
     for classinfo in list(classes.class_info.values()):
         _create_vtable_struct(classinfo)
 
+
 #### Classes based on struct slices ###############################################################
+
 
 def _create_class_structs__slices(classinfo, endmarkers=True):
     """Create the IDA structs for a C++ class."""
     classname = classinfo.classname
     # Open or create the structs.
-    sidf = idau.struct_open(classname + '::fields', create=True)
-    
+    sidf = idau.struct_open(classname + "::fields", create=True)
+
     # IDA is getting smart, it creates structs that collide with the names that we want to use.
     # For now, we'll try to rename what IDA created. Other alternatives are deleting it or removing the fields.
     # All this until one day, IDA will do a decent job and we won't need this script. :)
     sid = idau.struct_open(classname)
-    if (sid):
-        _log(1, f'IDA has already created {classname} struct, renaming it.')
-        if (not ida_struct.set_struc_name(sid, f'ida_{classname}')):
-            _log(-1, 'failed to rename IDA struct')
+    if sid:
+        _log(1, f"IDA has already created {classname} struct, renaming it.")
+        if not idc.set_struc_name(sid, f"ida_{classname}"):
+            _log(-1, "failed to rename IDA struct")
             # XXX: should we return in this case?
 
-    sid  = idau.struct_open(classname, create=True)
+    sid = idau.struct_open(classname, create=True)
     if sid is None or sidf is None:
-        _log(0, 'Could not create class structs for {}', classname)
+        _log(0, "Could not create class structs for {}", classname)
         return None
     assert all(not idc.is_union(s) for s in (sidf, sid))
     # Calculate the size of the ::fields struct.
@@ -252,11 +260,12 @@ def _create_class_structs__slices(classinfo, endmarkers=True):
     fields_size = classinfo.class_size - fields_start
     # Add an ::end member to the fields struct if requested.
     if endmarkers:
-        ret = idc.add_struc_member(sidf, classname + '::end', fields_size, idc.FF_UNK, -1, 0)
+        ret = idc.add_struc_member(sidf, classname + "::end", fields_size, idc.FF_UNK, -1, 0)
         if ret not in (0, idc.STRUC_ERROR_MEMBER_NAME, idc.STRUC_ERROR_MEMBER_OFFSET):
             # If that didn't work that's too bad, but continue anyway.
-            _log(0, 'Could not create {}::end', classname)
+            _log(0, "Could not create {}::end", classname)
     return sid, sidf, fields_start
+
 
 def _populate_fields_struct__slices(sid, classinfo, fields_start, accesses):
     """Fill in the members of the ::fields struct based on the accesses."""
@@ -266,25 +275,26 @@ def _populate_fields_struct__slices(sid, classinfo, fields_start, accesses):
     # For each (offset, size) access, add a member to the struct.
     build_struct.create_struct_fields(sid, accesses=accesses, base=fields_start)
 
+
 def _populate_wrapper_struct__slices(sid, classinfo):
     """Fill in the members of the wrapper struct."""
     # First add the vtable pointer.
     offset = 0
-    vtable_ptr_type = '{}::vtable *'.format(classinfo.classname)
-    ret = idau.struct_add_ptr(sid, 'vtable', offset, type=vtable_ptr_type)
+    vtable_ptr_type = "{}::vtable *".format(classinfo.classname)
+    ret = idau.struct_add_ptr(sid, "vtable", offset, type=vtable_ptr_type)
     if ret not in (0, idc.STRUC_ERROR_MEMBER_OFFSET):
-        _log(0, 'Could not create {}.vtable: {}', classinfo.classname, ret)
+        _log(0, "Could not create {}.vtable: {}", classinfo.classname, ret)
         return False
     # Now add all the ::fields structs.
     offset += idau.WORD_SIZE
     for ci in classinfo.ancestors(inclusive=True):
         # Get the sid of the ::fields struct.
-        fields_sid = idau.struct_open(ci.classname + '::fields')
+        fields_sid = idau.struct_open(ci.classname + "::fields")
         if fields_sid is None:
-            _log(0, 'Could not find {}::fields', ci.classname)
+            _log(0, "Could not find {}::fields", ci.classname)
             return False
         # If this is a 0-length struct (no fields), skip it.
-        size = ida_struct.get_struc_size(fields_sid)
+        size = idc.get_struc_size(fields_sid)
         if size == 0:
             continue
         # If this is already in the wrapper struct, skip it. This avoids weird
@@ -293,31 +303,34 @@ def _populate_wrapper_struct__slices(sid, classinfo):
             continue
         # TODO: this is a temp solution to have templated classes names resolved well. Need a permanent one.
         # example: iOS17b1 OSValueObject<OSKextRequestResourceCallback>::fields field on the struct: OSValueObject<OSKextRequestResourceCallback>
-        clean_name = symbol.clean_templated_name(ci.classname)  
+        clean_name = symbol.clean_templated_name(ci.classname)
         ret = idau.struct_add_struct(sid, clean_name, offset, fields_sid)
         if ret != 0:
-            _log(0, '_populate_wrapper_struct__slices:For sid: {} and msid: {} Could not create {}.{}: {}', sid, fields_sid, classinfo.classname, clean_name, ret)
+            _log(0, "_populate_wrapper_struct__slices:For sid: {} and msid: {} Could not create {}.{}: {}", sid, fields_sid, classinfo.classname, clean_name, ret)
             return False
         offset += size
     return True
 
+
 def _populate_class_structs__slices(classinfo, class_accesses, sid, sidf, fields_start):
     """Populate the IDA structs for a C++ class."""
-    _populate_fields_struct__slices(sidf, classinfo, fields_start,
-            class_accesses[classinfo.classname])
+    _populate_fields_struct__slices(sidf, classinfo, fields_start, class_accesses[classinfo.classname])
     _populate_wrapper_struct__slices(sid, classinfo)
 
+
 #### Classes based on unions ######################################################################
+
 
 def _create_class_structs__unions(classinfo):
     """Create the IDA structs for a C++ class."""
     classname = classinfo.classname
-    sidf = idau.struct_open(classname + '::fields', create=True)
-    sid  = idau.struct_open(classname, union=True, create=True)
+    sidf = idau.struct_open(classname + "::fields", create=True)
+    sid = idau.struct_open(classname, union=True, create=True)
     if sid is None or sidf is None:
-        _log(0, 'Could not create class structs for {}', classname)
+        _log(0, "Could not create class structs for {}", classname)
         return None
     return sid, sidf
+
 
 def _populate_fields_struct__unions(sid, classinfo, accesses):
     """Fill in the members of the ::fields struct based on the accesses."""
@@ -327,57 +340,63 @@ def _populate_fields_struct__unions(sid, classinfo, accesses):
     # For each (offset, size) access, add a member to the struct.
     build_struct.create_struct_fields(sid, accesses=accesses)
 
+
 def _populate_wrapper_struct__unions(sid, classinfo):
     """Fill in the members of the wrapper struct."""
     # First add the vtable pointer.
-    vtable_ptr_type = '{}::vtable *'.format(classinfo.classname)
-    ret = idau.struct_add_ptr(sid, 'vtable', -1, type=vtable_ptr_type)
+    vtable_ptr_type = "{}::vtable *".format(classinfo.classname)
+    ret = idau.struct_add_ptr(sid, "vtable", -1, type=vtable_ptr_type)
     if ret not in (0, idc.STRUC_ERROR_MEMBER_NAME):
-        _log(0, 'Could not create {}.vtable: {}', classinfo.classname, ret)
+        _log(0, "Could not create {}.vtable: {}", classinfo.classname, ret)
         return False
     # Now add all the ::fields structs.
     for ci in classinfo.ancestors(inclusive=True):
         # Get the sid of the ::fields struct.
-        fields_sid = idau.struct_open(ci.classname + '::fields')
+        fields_sid = idau.struct_open(ci.classname + "::fields")
         if fields_sid is None:
-            _log(0, 'Could not find {}::fields', ci.classname)
+            _log(0, "Could not find {}::fields", ci.classname)
             return False
         # Add the ::fields struct to the wrapper. Ignore STRUC_ERROR_MEMBER_UNIVAR if the ::fields
         # struct has length 0.
         ret = idau.struct_add_struct(sid, ci.classname, -1, fields_sid)
         if ret not in (0, idc.STRUC_ERROR_MEMBER_NAME, idc.STRUC_ERROR_MEMBER_UNIVAR):
-            _log(0, '_populate_wrapper_struct__unions: For sid: {} and msid: {} Could not create {}.{}: {}', sid, fields_sid, classinfo.classname, ci.classname, ret)
+            _log(0, "_populate_wrapper_struct__unions: For sid: {} and msid: {} Could not create {}.{}: {}", sid, fields_sid, classinfo.classname, ci.classname, ret)
             return False
     return True
+
 
 def _populate_class_structs__unions(classinfo, class_accesses, sid, sidf):
     """Populate the IDA structs for a C++ class."""
     _populate_fields_struct__unions(sidf, classinfo, class_accesses[classinfo.classname])
     _populate_wrapper_struct__unions(sid, classinfo)
 
+
 #### Class generation #############################################################################
 
-CLASS_SLICES = 'slices'
-CLASS_UNIONS = 'unions'
+CLASS_SLICES = "slices"
+CLASS_UNIONS = "unions"
 
 DEFAULT_STYLE = CLASS_SLICES
+
 
 def initialize_class_structs(style=DEFAULT_STYLE):
     """Create IDA structs representing the C++ classes in the kernel.
 
     Depends on initialize_vtable_structs.
     """
+
     # A generator that will yield (virtual_method, classname, X0).
     def virtual_methods():
         for classinfo in list(classes.class_info.values()):
             for _, vmethod, _ in vtable.class_vtable_overrides(classinfo, new=True, methods=True):
                 if not idau.is_function_start(vmethod):
-                    _log(3, 'Non-function virtual method {:#x} in class {}', vmethod,
-                            classinfo.classname)
+                    _log(3, "Non-function virtual method {:#x} in class {}", vmethod, classinfo.classname)
                     continue
                 yield vmethod, classinfo.classname, idautils.procregs.X0.reg
+
     # Do the standard processing.
     process_functions(virtual_methods(), style=style)
+
 
 def _collect_all_class_accesses(functions):
     """Collect all accesses to each class by examining the functions.
@@ -386,26 +405,28 @@ def _collect_all_class_accesses(functions):
     """
     all_accesses = collections.defaultdict(lambda: collections.defaultdict(set))
     for function, classname, register in functions:
-        data_flow.pointer_accesses(function=function, initialization={ function: { register: 0 } },
-                accesses=all_accesses[classname])
+        data_flow.pointer_accesses(function=function, initialization={function: {register: 0}}, accesses=all_accesses[classname])
     return all_accesses
+
 
 def _classify_class_accesses(all_accesses, style):
     """Categorize each access by specific class and build a list of operands to convert.
 
     Arm64 only.
     """
-    all_classes    = set()
+    all_classes = set()
     class_accesses = collections.defaultdict(collections.Counter)
     class_operands = collections.defaultdict(set)
+
     # Helper for logging.
     def log_addrs(addresses_and_deltas):
-        return ', '.join('{:#x}'.format(ea) for ea, dt in addresses_and_deltas)
+        return ", ".join("{:#x}".format(ea) for ea, dt in addresses_and_deltas)
+
     # For each class, look at the accesses associated with that class.
     for classname, accesses in list(all_accesses.items()):
         classinfo = classes.class_info.get(classname)
         if not classinfo:
-            _log(-1, 'Skipping non-existent class {}', classname)
+            _log(-1, "Skipping non-existent class {}", classname)
             continue
         # Put each (offset, size) pair in the appropriate dictionary. We'll traverse our ancestors
         # from root to leaf, which means the first time this offset/size combination fits in a
@@ -432,15 +453,13 @@ def _classify_class_accesses(all_accesses, style):
                     if ci.superclass:
                         superclass_size = ci.superclass.class_size
                     if offset < superclass_size:
-                        _log(-1, 'Class {} has spanning access ({}, {}) from addresses {}',
-                                classname, offset, size, log_addrs(addresses_and_deltas))
+                        _log(-1, "Class {} has spanning access ({}, {}) from addresses {}", classname, offset, size, log_addrs(addresses_and_deltas))
                         if style != CLASS_UNIONS:
                             break
                     # If the access is unaligned with respect to the size, it's more likely to be
                     # incorrect. Log it, but continue.
                     if offset % size != 0:
-                        _log(2, 'Class {} has unaligned access ({}, {}) from addresses {}',
-                                classname, offset, size, log_addrs(addresses_and_deltas))
+                        _log(2, "Class {} has unaligned access ({}, {}) from addresses {}", classname, offset, size, log_addrs(addresses_and_deltas))
                     # Looks good, add it to the collection.
                     class_accesses[ci.classname][offset_and_size] += len(addresses_and_deltas)
                     class_operands[classname].update(addresses_and_deltas)
@@ -448,9 +467,9 @@ def _classify_class_accesses(all_accesses, style):
             else:
                 # Almost certainly this is caused when the same register is used for two different
                 # classes, but the path that gets this class to this access is impossible to satisfy.
-                _log(-1, 'Class {} has out-of-bounds access ({}, {}) from addresses {}',
-                        classname, offset, size, log_addrs(addresses_and_deltas))
+                _log(-1, "Class {} has out-of-bounds access ({}, {}) from addresses {}", classname, offset, size, log_addrs(addresses_and_deltas))
     return all_classes, class_accesses, class_operands
+
 
 def _convert_operands_to_struct_offsets(access_addresses):
     """Convert the operands that generated struct accesses into struct offsets."""
@@ -463,31 +482,32 @@ def _convert_operands_to_struct_offsets(access_addresses):
                     for op in insn.ops:
                         if op.type == idaapi.o_displ:
                             if not idau.insn_op_stroff(insn, op.n, sid, delta):
-                                _log(1, 'Could not convert {:#x} to struct offset for class {} '
-                                        'delta {}', ea, classname, delta)
+                                _log(1, "Could not convert {:#x} to struct offset for class {} " "delta {}", ea, classname, delta)
+
 
 def _set_class_style(style):
     """Set the global class style."""
     global _style_was_set, _create_class_structs, _populate_class_structs
     assert style in (CLASS_SLICES, CLASS_UNIONS)
     # Check the current style based on OSObject, a class that should always exist.
-    sid = idau.struct_open('OSObject')
+    sid = idau.struct_open("OSObject")
     want_union = style == CLASS_UNIONS
     if sid is None:
         # No global style has been set.
-        idau.struct_create('OSObject', union=want_union)
+        idau.struct_create("OSObject", union=want_union)
     else:
         # A style already exists. Check that the requested style matches.
         is_union = bool(idc.is_union(sid))
         if is_union != want_union:
-            raise ValueError('Incompatible style {}', style)
+            raise ValueError("Incompatible style {}", style)
     # Set the appropriate functions based on the style.
     if style == CLASS_SLICES:
-        _create_class_structs   = _create_class_structs__slices
+        _create_class_structs = _create_class_structs__slices
         _populate_class_structs = _populate_class_structs__slices
     else:
-        _create_class_structs   = _create_class_structs__unions
+        _create_class_structs = _create_class_structs__unions
         _populate_class_structs = _populate_class_structs__unions
+
 
 def process_functions(functions, style=DEFAULT_STYLE):
     """Process additional functions.
@@ -522,34 +542,37 @@ def process_functions(functions, style=DEFAULT_STYLE):
     # offset reference.
     _convert_operands_to_struct_offsets(class_operands)
 
+
 #### Vtable type propagation ######################################################################
+
 
 def _propagate_virtual_method_type_for_method(classinfo, class_vindex, vmethod):
     """Propagate the type of a class's virtual method to the vtable struct."""
     if not idau.is_function_start(vmethod):
-        _log(2, 'Not a function start: {:x}', vmethod)
+        _log(2, "Not a function start: {:x}", vmethod)
         return False
     vmethod_type = idc.guess_type(vmethod)
     if not vmethod_type:
-        _log(2, 'No guessed type: {:x}', vmethod)
+        _log(2, "No guessed type: {:x}", vmethod)
         return False
     vmethod_ptr_type = symbol.convert_function_type_to_function_pointer_type(vmethod_type)
     if not vmethod_ptr_type:
-        _log(2, 'Could not convert to function pointer type: {:x}', vmethod)
+        _log(2, "Could not convert to function pointer type: {:x}", vmethod)
         return False
-    vmethods_sid = idau.struct_open(classinfo.classname + '::vmethods')
+    vmethods_sid = idau.struct_open(classinfo.classname + "::vmethods")
     vmethod_offset = class_vindex * idau.WORD_SIZE
     vmethod_mid = idc.get_member_id(vmethods_sid, vmethod_offset)
     if not bool(idc.SetType(vmethod_mid, vmethod_ptr_type)):
-        _log(2, 'Could not set vmethod field type: {:x}, {}, {}', vmethod, classinfo.classname,
-                class_vindex)
+        _log(2, "Could not set vmethod field type: {:x}, {}, {}", vmethod, classinfo.classname, class_vindex)
         return False
     return True
+
 
 def _propagate_virtual_method_types_for_class(classinfo):
     """Propagate the types of a class's virtual methods to the vtable struct."""
     for relative_index, vmethod in enumerate(vtable.class_vtable_methods(classinfo, new=True)):
         _propagate_virtual_method_type_for_method(classinfo, relative_index, vmethod)
+
 
 def propagate_virtual_method_types_to_vtable_structs():
     """Propagate the types of virtual methods to the corresponding entries in the vtables.
@@ -561,4 +584,3 @@ def propagate_virtual_method_types_to_vtable_structs():
     """
     for classinfo in list(classes.class_info.values()):
         _propagate_virtual_method_types_for_class(classinfo)
-

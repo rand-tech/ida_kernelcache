@@ -9,16 +9,19 @@ import collections
 
 import idc
 import idautils
-import ida_struct
+
+# import ida_struct
 import idaapi
 
 from . import ida_utilities as idau
 
 _log = idau.make_log(1, __name__)
 
+
 def field_name(offset):
     """Automatically generated IDA structs have their fields named by their absolute offset."""
-    return 'field_{:x}'.format(offset)
+    return "field_{:x}".format(offset)
+
 
 def create_struct_fields(sid=None, name=None, accesses=None, create=False, base=0):
     """Create an IDA struct with fields corresponding to the specified access pattern.
@@ -42,12 +45,12 @@ def create_struct_fields(sid=None, name=None, accesses=None, create=False, base=
     if sid is None:
         sid = idau.struct_open(name, create=True)
         if sid is None:
-            _log(0, 'Could not open struct {}', name)
+            _log(0, "Could not open struct {}", name)
             return False
     else:
-        name = ida_struct.get_struc_name(sid)
+        name = idc.get_struc_name(sid)
         if name is None:
-            _log(0, 'Invalid struct id {}', sid)
+            _log(0, "Invalid struct id {}", sid)
             return False
     # Now, for each (offset, size) pair, create a struct member. Right now we completely ignore the
     # possibility that some members will overlap (for various reasons; it's actually more common
@@ -64,10 +67,8 @@ def create_struct_fields(sid=None, name=None, accesses=None, create=False, base=
         ret = idau.struct_add_word(sid, member, offset - base, size)
         if ret != 0:
             if ret == idc.STRUC_ERROR_MEMBER_OFFSET:
-                _log(2, 'Could not add {}.{} for access ({}, {})', name, member, offset, size)
+                _log(2, "Could not add {}.{} for access ({}, {})", name, member, offset, size)
             else:
                 success = False
-                _log(1, 'Could not add {}.{} for access ({}, {}): {}', name, member, offset, size,
-                        ret)
+                _log(1, "Could not add {}.{} for access ({}, {}): {}", name, member, offset, size, ret)
     return success
-
