@@ -122,8 +122,6 @@ import idc
 import idautils
 import idaapi
 
-# import ida_struct
-
 from . import ida_utilities as idau
 from . import build_struct
 from . import classes

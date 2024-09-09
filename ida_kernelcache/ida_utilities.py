@@ -4,13 +4,11 @@ import ida_bytes
 import ida_funcs
 import ida_ida
 import ida_name
-import ida_struct
 import idaapi
 import idautils
 import idc
 
-read_ptr = idaapi.get_qword if idaapi.get_inf_structure().is_64bit() else idaapi.get_dword
-
+read_ptr = idaapi.get_qword if idaapi.inf_is_64bit() else idaapi.get_dword
 
 def make_log(log_level, module):
     """Create a logging function."""
@@ -606,7 +604,7 @@ def struct_create(name, union=False):
 
 def struct_open(name, create=False, union=None):
     """Get the SID of the IDA struct with the given name, optionally creating it."""
-    sid = ida_struct.get_struc_id(name)
+    sid = idc.get_struc_id(name)
     if sid == idc.BADADDR:
         if not create:
             return None
